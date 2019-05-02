@@ -1,8 +1,15 @@
 package nfsserver
 
+// The PVC controller watches for CRUD operations on PVCs, and if the PVC's
+// provisioner matches nfs-storageos.com it will handle the operation.
+//
+// Operations are handled by creating, modifying or deleting an NFSServer
+// Custom Resource (CR).  The NFSServer controller will handle the details.
+
 import (
 	"context"
 	e "errors"
+	"log"
 
 	storageosv1alpha1 "github.com/storageos/cluster-operator/pkg/apis/storageos/v1alpha1"
 	corev1 "k8s.io/api/core/v1"
@@ -34,6 +41,7 @@ var (
 // The Manager will set fields on the Controller and Start it when the Manager
 // is Started.
 func AddProvisioner(mgr manager.Manager) error {
+	log.Print("adding NFSServer provisioner")
 	return addProvisioner(mgr, newProvisioner(mgr))
 }
 
@@ -52,14 +60,15 @@ func addProvisioner(mgr manager.Manager, r reconcile.Reconciler) error {
 		return err
 	}
 
-	// Watch for changes to primary resource PVC
+	// Watch for changes to primary resource (PVC).
 	err = c.Watch(&source.Kind{Type: &corev1.PersistentVolumeClaim{}}, &handler.EnqueueRequestForObject{})
 	if err != nil {
 		return err
 	}
 
-	// TODO(user): Modify this to be the types you create that are owned by the primary resource
-	// Watch for changes to secondary resource Pods and requeue the owner NFSServer
+	log.Print("watching PVC events")
+
+	// Watch for changes to secondary resource (NFSServer).
 	err = c.Watch(&source.Kind{Type: &storageosv1alpha1.NFSServer{}}, &handler.EnqueueRequestForOwner{
 		IsController: true,
 		OwnerType:    &corev1.PersistentVolumeClaim{},
@@ -68,12 +77,14 @@ func addProvisioner(mgr manager.Manager, r reconcile.Reconciler) error {
 		return err
 	}
 
+	log.Print("watching NFSServer events")
+
 	return nil
 }
 
 var _ reconcile.Reconciler = &ReconcilePVC{}
 
-// ReconcilePVC reconciles a PersistentVolumeClaim object
+// ReconcilePVC reconciles a PersistentVolumeClaim object.
 type ReconcilePVC struct {
 	// This client, initialized using mgr.Client() above, is a split client
 	// that reads objects from the cache and writes to the apiserver
@@ -83,15 +94,10 @@ type ReconcilePVC struct {
 
 // Reconcile reads that state of the cluster for a PVC object and makes
 // changes based on the state read and what is in the NFSServer.Spec
-// TODO(user):
-// Modify this Reconcile function to implement your Controller logic.  This
-// example creates a Pod as an example Note: The Controller will requeue the
-// Request to be processed again if the returned error is non-nil or
-// Result.Requeue is true, otherwise upon completion it will remove the work
-// from the queue.
 func (r *ReconcilePVC) Reconcile(request reconcile.Request) (reconcile.Result, error) {
-	reqLogger := log.WithValues("Request.Namespace", request.Namespace, "Request.Name", request.Name)
-	reqLogger.Info("Reconciling PVC")
+	// reqLogger := log.WithValues("Request.Namespace", request.Namespace, "Request.Name", request.Name)
+	// reqLogger.Info("Reconciling PVC")
+	log.Print("Reconciling PVC")
 
 	// Fetch the PVC instance
 	instance := &corev1.PersistentVolumeClaim{}
@@ -110,13 +116,14 @@ func (r *ReconcilePVC) Reconcile(request reconcile.Request) (reconcile.Result, e
 	// Get PVC provisioner.
 	provisioner, err := r.getProvisioner(instance)
 	if err != nil {
-		reqLogger.Info("Skip reconcile: PVC doesn't have a provisioner", "PVC.Namespace", instance.Namespace, "PVC.Name", instance.Name, "Error", err.Error())
+		log.Printf("Skip reconcile: failed to get PVC provisioner for %s/%s: %s", instance.Namespace, instance.Name, err.Error())
 		return reconcile.Result{}, nil
 	}
 
 	// Skip PVCs not using StorageOS provisioner.
 	if provisioner != "nfs.storageos.com" {
-		reqLogger.Info("Skip reconcile: PVC not using StorageOS provisioner", "PVC.Namespace", instance.Namespace, "PVC.Name", instance.Name, "PVC.Provisioner", provisioner)
+		log.Printf("Skip reconcile: PVC not using StorageOS NFS provisioner %s/%s: %s", instance.Namespace, instance.Name, provisioner)
+		// reqLogger.Info("Skip reconcile: PVC not using StorageOS provisioner", "PVC.Namespace", instance.Namespace, "PVC.Name", instance.Name, "PVC.Provisioner", provisioner)
 		return reconcile.Result{}, nil
 	}
 
@@ -125,6 +132,7 @@ func (r *ReconcilePVC) Reconcile(request reconcile.Request) (reconcile.Result, e
 
 	// Set NFSServer instance as the owner and controller.
 	if err := controllerutil.SetControllerReference(instance, nfs, r.scheme); err != nil {
+		log.Printf("Skip reconcile: failed to set controller reference for %s/%s: %s", instance.Namespace, instance.Name, err.Error())
 		return reconcile.Result{}, err
 	}
 
@@ -132,20 +140,24 @@ func (r *ReconcilePVC) Reconcile(request reconcile.Request) (reconcile.Result, e
 	found := &storageosv1alpha1.NFSServer{}
 	err = r.client.Get(context.TODO(), types.NamespacedName{Name: nfs.Name, Namespace: nfs.Namespace}, found)
 	if err != nil && errors.IsNotFound(err) {
-		reqLogger.Info("Creating a new NFS server", "NFSServer.Namespace", nfs.Namespace, "NFSServer.Name", nfs.Name)
+		// reqLogger.Info("Creating a new NFS server", "NFSServer.Namespace", nfs.Namespace, "NFSServer.Name", nfs.Name)
+		log.Printf("Creating a new NFS server for %s/%s", instance.Namespace, instance.Name)
 		err = r.client.Create(context.TODO(), nfs)
 		if err != nil {
+			log.Printf("Failed to create a new NFS server for %s/%s: %s", instance.Namespace, instance.Name, err.Error())
 			return reconcile.Result{}, err
 		}
 
 		// NFS Server created successfully - don't requeue
 		return reconcile.Result{}, nil
 	} else if err != nil {
+		log.Printf("Failed to check is NFS server exists for %s/%s: %s", instance.Namespace, instance.Name, err.Error())
 		return reconcile.Result{}, err
 	}
 
 	// NFS Server already exists - don't requeue
-	reqLogger.Info("Skip reconcile: NFS Server already exists", "NFSServer.Namespace", found.Namespace, "NFSServer.Name", found.Name)
+	// reqLogger.Info("Skip reconcile: NFS Server already exists", "NFSServer.Namespace", found.Namespace, "NFSServer.Name", found.Name)
+	log.Printf("NFS server exists for %s/%s", instance.Namespace, instance.Name)
 	return reconcile.Result{}, nil
 }
 
