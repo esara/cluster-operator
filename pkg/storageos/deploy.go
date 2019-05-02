@@ -35,6 +35,7 @@ const (
 
 	intreeProvisionerName = "kubernetes.io/storageos"
 	csiProvisionerName    = "storageos"
+	nfsProvisionerName    = "nfs.storageos.com"
 
 	defaultFSType                            = "ext4"
 	secretNamespaceKey                       = "adminSecretNamespace"
@@ -169,6 +170,11 @@ func (s *Deployment) Deploy() error {
 		}
 
 		if err := s.createClusterRoleBindingForSCC(); err != nil {
+			return err
+		}
+
+		// Only create NFS StorageClass when CSI is enabled.
+		if err := s.createNFSStorageClass(); err != nil {
 			return err
 		}
 	}

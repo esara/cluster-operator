@@ -78,6 +78,11 @@ func (s *Deployment) Delete() error {
 		if err := s.deleteCSISecrets(); err != nil {
 			return err
 		}
+
+		// Only created for CSI
+		if err := s.deleteStorageClass("nfs"); err != nil {
+			return err
+		}
 	}
 
 	// Delete cluster role for openshift security context constraints.

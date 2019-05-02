@@ -115,7 +115,7 @@ func (r *ReconcilePVC) Reconcile(request reconcile.Request) (reconcile.Result, e
 	}
 
 	// Skip PVCs not using StorageOS provisioner.
-	if provisioner != "kubernetes.io/storageos" && provisioner != "storageos" {
+	if provisioner != "nfs.storageos.com" {
 		reqLogger.Info("Skip reconcile: PVC not using StorageOS provisioner", "PVC.Namespace", instance.Namespace, "PVC.Name", instance.Name, "PVC.Provisioner", provisioner)
 		return reconcile.Result{}, nil
 	}
