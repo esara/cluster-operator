@@ -3,17 +3,16 @@ package nfsserver
 import (
 	"context"
 	"log"
+	"strings"
 
 	storageosv1alpha1 "github.com/storageos/cluster-operator/pkg/apis/storageos/v1alpha1"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
-	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/tools/record"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller"
-	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 	"sigs.k8s.io/controller-runtime/pkg/handler"
 	"sigs.k8s.io/controller-runtime/pkg/manager"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
@@ -72,18 +71,14 @@ var _ reconcile.Reconciler = &ReconcileNFSServer{}
 type ReconcileNFSServer struct {
 	// This client, initialized using mgr.Client() above, is a split client
 	// that reads objects from the cache and writes to the apiserver
-	client   client.Client
-	scheme   *runtime.Scheme
-	recorder record.EventRecorder
+	client        client.Client
+	scheme        *runtime.Scheme
+	recorder      record.EventRecorder
+	currentServer *Server
 }
 
-// Reconcile reads that state of the cluster for a NFSServer object and makes changes based on the state read
-// and what is in the NFSServer.Spec
-// TODO(user): Modify this Reconcile function to implement your Controller logic.  This example creates
-// a Pod as an example
-// Note:
-// The Controller will requeue the Request to be processed again if the returned error is non-nil or
-// Result.Requeue is true, otherwise upon completion it will remove the work from the queue.
+// Reconcile reads that state of the cluster for a NFSServer object and makes
+// changes based on the state read and what is in the NFSServer.Spec
 func (r *ReconcileNFSServer) Reconcile(request reconcile.Request) (reconcile.Result, error) {
 	// reqLogger := log.WithValues("Request.Namespace", request.Namespace, "Request.Name", request.Name)
 	// reqLogger.Info("Reconciling NFSServer")
@@ -94,43 +89,87 @@ func (r *ReconcileNFSServer) Reconcile(request reconcile.Request) (reconcile.Res
 	err := r.client.Get(context.TODO(), request.NamespacedName, instance)
 	if err != nil {
 		if errors.IsNotFound(err) {
-			// Request object not found, could have been deleted after reconcile request.
-			// Owned objects are automatically garbage collected. For additional cleanup logic use finalizers.
-			// Return and don't requeue
+			// Request object not found, could have been deleted after reconcile
+			// request. Owned objects are automatically garbage collected.
+			// Return and don't requeue.
 			return reconcile.Result{}, nil
 		}
 		// Error reading the object - requeue the request.
 		return reconcile.Result{}, err
 	}
 
-	// Define a new Pod object
-	pod := newPodForCR(instance)
+	// // Define a new St object
+	// pod := newPodForCR(instance)
 
-	// Set NFSServer instance as the owner and controller
-	if err := controllerutil.SetControllerReference(instance, pod, r.scheme); err != nil {
-		log.Printf("Skip reconcile: failed to set controller reference for %s/%s: %s", instance.Namespace, instance.Name, err.Error())
-		return reconcile.Result{}, err
-	}
+	// // Set NFSServer instance as the owner and controller
+	// if err := controllerutil.SetControllerReference(instance, pod, r.scheme); err != nil {
+	// 	log.Printf("Skip reconcile: failed to set controller reference for %s/%s: %s", instance.Namespace, instance.Name, err.Error())
+	// 	return reconcile.Result{}, err
+	// }
 
-	// Check if the NFSServer StatefulSet already exists
-	found := &corev1.Pod{}
-	err = r.client.Get(context.TODO(), types.NamespacedName{Name: pod.Name, Namespace: pod.Namespace}, found)
-	if err != nil && errors.IsNotFound(err) {
-		// reqLogger.Info("Creating a new Pod", "Pod.Namespace", pod.Namespace, "Pod.Name", pod.Name)
-		err = r.client.Create(context.TODO(), pod)
-		if err != nil {
-			return reconcile.Result{}, err
-		}
+	// // Check if the NFSServer StatefulSet already exists
+	// found := &appsv1.StatefulSet{}
+	// err = r.client.Get(context.TODO(), types.NamespacedName{Name: pod.Name, Namespace: pod.Namespace}, found)
+	// if err != nil && errors.IsNotFound(err) {
+	// 	// reqLogger.Info("Creating a new Pod", "Pod.Namespace", pod.Namespace, "Pod.Name", pod.Name)
+	// 	err = r.client.Create(context.TODO(), pod)
+	// 	if err != nil {
+	// 		return reconcile.Result{}, err
+	// 	}
 
-		// Pod created successfully - don't requeue
-		return reconcile.Result{}, nil
-	} else if err != nil {
-		return reconcile.Result{}, err
-	}
+	// 	// Pod created successfully - don't requeue
+	// 	return reconcile.Result{}, nil
+	// } else if err != nil {
+	// 	return reconcile.Result{}, err
+	// }
 
 	// Pod already exists - don't requeue
 	// reqLogger.Info("Skip reconcile: Pod already exists", "Pod.Namespace", found.Namespace, "Pod.Name", found.Name)
+
+	if err := r.reconcile(instance); err != nil {
+		return reconcile.Result{}, err
+	}
+
 	return reconcile.Result{}, nil
+}
+
+func (r *ReconcileNFSServer) reconcile(m *storageosv1alpha1.NFSServer) error {
+
+	// Finalizers are set when an object should be deleted. Apply deploy only
+	// when finalizers is empty.
+	if len(m.GetFinalizers()) == 0 {
+
+		if err := r.currentCluster.Deploy(r); err != nil {
+			// Ignore "Operation cannot be fulfilled" error. It happens when the
+			// actual state of object is different from what is known to the operator.
+			// Operator would resync and retry the failed operation on its own.
+			if !strings.HasPrefix(err.Error(), "Operation cannot be fulfilled") {
+				r.recorder.Event(m, corev1.EventTypeWarning, "FailedCreation", err.Error())
+			}
+			return err
+		}
+	} else {
+		// Delete the deployment once the finalizers are set on the cluster
+		// resource.
+		r.recorder.Event(m, corev1.EventTypeNormal, "Terminating", "Deleting all the resources...")
+
+		if err := r.currentCluster.DeleteDeployment(); err != nil {
+			return err
+		}
+
+		r.ResetCurrentCluster()
+		// Reset finalizers and let k8s delete the object.
+		// When finalizers are set on an object, metadata.deletionTimestamp is
+		// also set. deletionTimestamp helps the garbage collector identify
+		// when to delete an object. k8s deletes the object only once the
+		// list of finalizers is empty.
+		m.SetFinalizers([]string{})
+		return r.client.Update(context.Background(), m)
+	}
+
+	return nil
+
+	return nil
 }
 
 // newPodForCR returns a busybox pod with the same name/namespace as the cr
