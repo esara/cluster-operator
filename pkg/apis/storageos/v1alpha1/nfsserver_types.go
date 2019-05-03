@@ -32,7 +32,8 @@ type NFSServerSpec struct {
 	Annotations map[string]string `json:"annotations,omitempty"`
 
 	// Replicas of the NFS daemon
-	Replicas int `json:"replicas,omitempty"`
+	// TODO(simon): Don't think we can have multiple servers?
+	// Replicas int `json:"replicas,omitempty"`
 
 	// The parameters to configure the NFS export
 	Exports []ExportsSpec `json:"exports,omitempty"`

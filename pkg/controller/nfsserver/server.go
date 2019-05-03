@@ -1,4 +1,4 @@
-package nfs
+package nfsserver
 
 import (
 	storageosv1alpha1 "github.com/storageos/cluster-operator/pkg/apis/storageos/v1alpha1"
