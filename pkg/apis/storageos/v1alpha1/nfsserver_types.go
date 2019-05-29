@@ -20,8 +20,11 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
-// EDIT THIS FILE!  THIS IS SCAFFOLDING FOR YOU TO OWN!
-// NOTE: json tags are required.  Any new fields you add must have json tags for the fields to be serialized.
+const (
+	// DefaultNFSContainerImage is the name of the Ganesha container to run.
+	// TODO: change to an image we maintain.
+	DefaultNFSContainerImage = "apnar/docker-image-nfs-ganesha"
+)
 
 // NFSServerSpec defines the desired state of NFSServer
 type NFSServerSpec struct {

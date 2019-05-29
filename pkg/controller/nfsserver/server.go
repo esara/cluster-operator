@@ -2,7 +2,7 @@ package nfsserver
 
 import (
 	storageosv1alpha1 "github.com/storageos/cluster-operator/pkg/apis/storageos/v1alpha1"
-	"github.com/storageos/cluster-operator/pkg/storageos"
+	"github.com/storageos/cluster-operator/pkg/nfs"
 )
 
 // Server stores the current NFS server's information. It binds the
@@ -24,7 +24,7 @@ func NewServer(obj *storageosv1alpha1.NFSServer) *Server {
 // SetDeployment creates a new Server Deployment and sets it for the current
 // NFSServer.
 func (s *Server) SetDeployment(r *ReconcileNFSServer) {
-	s.deployment = storageos.NewDeployment(r.client, s.cluster, r.recorder, r.scheme)
+	s.deployment = nfs.NewDeployment(r.client, s.cached, r.recorder, r.scheme)
 }
 
 // IsCurrentServer compares the server attributes to check if the given
