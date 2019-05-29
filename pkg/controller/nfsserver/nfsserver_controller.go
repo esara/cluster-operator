@@ -139,7 +139,7 @@ func (r *ReconcileNFSServer) reconcile(m *storageosv1alpha1.NFSServer) error {
 	// when finalizers is empty.
 	if len(m.GetFinalizers()) == 0 {
 
-		if err := r.currentCluster.Deploy(r); err != nil {
+		if err := r.currentServer.Deploy(r); err != nil {
 			// Ignore "Operation cannot be fulfilled" error. It happens when the
 			// actual state of object is different from what is known to the operator.
 			// Operator would resync and retry the failed operation on its own.
@@ -153,11 +153,12 @@ func (r *ReconcileNFSServer) reconcile(m *storageosv1alpha1.NFSServer) error {
 		// resource.
 		r.recorder.Event(m, corev1.EventTypeNormal, "Terminating", "Deleting all the resources...")
 
-		if err := r.currentCluster.DeleteDeployment(); err != nil {
+		if err := r.currentServer.DeleteDeployment(); err != nil {
 			return err
 		}
 
-		r.ResetCurrentCluster()
+		// r.ResetCurrentCluster()
+
 		// Reset finalizers and let k8s delete the object.
 		// When finalizers are set on an object, metadata.deletionTimestamp is
 		// also set. deletionTimestamp helps the garbage collector identify
