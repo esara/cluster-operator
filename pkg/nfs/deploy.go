@@ -1,6 +1,8 @@
 package nfs
 
 import (
+	"log"
+
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
@@ -12,6 +14,8 @@ const (
 // Deploy creates all the resources required to provision an NFS PV on top of
 // a StorageOS block device.
 func (d *Deployment) Deploy() error {
+
+	log.Printf("Deploy: %#v\n", d.nfsServer)
 
 	if err := d.createStatefulSet(); err != nil {
 		return err

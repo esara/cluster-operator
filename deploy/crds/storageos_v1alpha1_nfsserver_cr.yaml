@@ -2,6 +2,6 @@ apiVersion: storageos.com/v1alpha1
 kind: NFSServer
 metadata:
   name: example-nfsserver
-spec:
+#spec:
   # Add fields here
-  size: 3
+  # size: 3

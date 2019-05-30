@@ -39,6 +39,7 @@ func (s *Server) IsCurrentServer(server *storageosv1alpha1.NFSServer) bool {
 
 // Deploy deploys the StorageOS cluster.
 func (s *Server) Deploy(r *ReconcileNFSServer) error {
+
 	if s.deployment == nil {
 		s.SetDeployment(r)
 	}
