@@ -8,7 +8,6 @@ import (
 	storageosv1alpha1 "github.com/storageos/cluster-operator/pkg/apis/storageos/v1alpha1"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/client-go/tools/record"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -17,6 +16,8 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/manager"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 	"sigs.k8s.io/controller-runtime/pkg/source"
+
+	"github.com/storageos/cluster-operator/pkg/nfs"
 )
 
 // var log = logf.Log.WithName("nfsserver")
@@ -77,6 +78,14 @@ type ReconcileNFSServer struct {
 	currentServer *Server
 }
 
+// // SetCurrentClusterIfNone checks if there's any existing current cluster and
+// // sets a new current cluster if it wasn't set before.
+// func (r *ReconcileNFSServer) SetCurrentClusterIfNone(cluster *storageosv1.StorageOSCluster) {
+// 	if r.currentCluster == nil {
+// 		r.SetCurrentCluster(cluster)
+// 	}
+// }
+
 // Reconcile reads that state of the cluster for a NFSServer object and makes
 // changes based on the state read and what is in the NFSServer.Spec
 func (r *ReconcileNFSServer) Reconcile(request reconcile.Request) (reconcile.Result, error) {
@@ -97,6 +106,9 @@ func (r *ReconcileNFSServer) Reconcile(request reconcile.Request) (reconcile.Res
 		// Error reading the object - requeue the request.
 		return reconcile.Result{}, err
 	}
+
+	// Set as the current cluster if there's no current cluster.
+	// r.SetCurrentClusterIfNone(instance)
 
 	// // Define a new St object
 	// pod := newPodForCR(instance)
@@ -126,102 +138,54 @@ func (r *ReconcileNFSServer) Reconcile(request reconcile.Request) (reconcile.Res
 	// Pod already exists - don't requeue
 	// reqLogger.Info("Skip reconcile: Pod already exists", "Pod.Namespace", found.Namespace, "Pod.Name", found.Name)
 
+	// log.Printf("instance: %#v\n", instance)
+
 	if err := r.reconcile(instance); err != nil {
+		log.Printf("Reconcile failed: %v", err)
 		return reconcile.Result{}, err
 	}
 
 	return reconcile.Result{}, nil
 }
 
-func (r *ReconcileNFSServer) reconcile(m *storageosv1alpha1.NFSServer) error {
+func (r *ReconcileNFSServer) reconcile(instance *storageosv1alpha1.NFSServer) error {
 
 	// Finalizers are set when an object should be deleted. Apply deploy only
 	// when finalizers is empty.
-	if len(m.GetFinalizers()) == 0 {
+	if len(instance.GetFinalizers()) == 0 {
 
-		if err := r.currentServer.Deploy(r); err != nil {
+		d := nfs.NewDeployment(r.client, instance, r.recorder, r.scheme)
+
+		if err := d.Deploy(); err != nil {
 			// Ignore "Operation cannot be fulfilled" error. It happens when the
 			// actual state of object is different from what is known to the operator.
 			// Operator would resync and retry the failed operation on its own.
 			if !strings.HasPrefix(err.Error(), "Operation cannot be fulfilled") {
-				r.recorder.Event(m, corev1.EventTypeWarning, "FailedCreation", err.Error())
+				r.recorder.Event(instance, corev1.EventTypeWarning, "FailedCreation", err.Error())
 			}
 			return err
 		}
-	} else {
-		// Delete the deployment once the finalizers are set on the cluster
-		// resource.
-		r.recorder.Event(m, corev1.EventTypeNormal, "Terminating", "Deleting all the resources...")
-
-		if err := r.currentServer.DeleteDeployment(); err != nil {
-			return err
-		}
-
-		// r.ResetCurrentCluster()
-
-		// Reset finalizers and let k8s delete the object.
-		// When finalizers are set on an object, metadata.deletionTimestamp is
-		// also set. deletionTimestamp helps the garbage collector identify
-		// when to delete an object. k8s deletes the object only once the
-		// list of finalizers is empty.
-		m.SetFinalizers([]string{})
-		return r.client.Update(context.Background(), m)
 	}
+	// else {
+	// 	// Delete the deployment once the finalizers are set on the cluster
+	// 	// resource.
+	// 	r.recorder.Event(instance, corev1.EventTypeNormal, "Terminating", "Deleting all the resources...")
+
+	// 	if err := instance.DeleteDeployment(); err != nil {
+	// 		return err
+	// 	}
+
+	// 	// r.ResetCurrentCluster()
+
+	// 	// Reset finalizers and let k8s delete the object.
+	// 	// When finalizers are set on an object, metadata.deletionTimestamp is
+	// 	// also set. deletionTimestamp helps the garbage collector identify
+	// 	// when to delete an object. k8s deletes the object only once the
+	// 	// list of finalizers is empty.
+	// 	m.SetFinalizers([]string{})
+	// 	return r.client.Update(context.Background(), m)
+	// }
 
 	return nil
 
-	return nil
-}
-
-// newPodForCR returns a busybox pod with the same name/namespace as the cr
-func newPVCForCR(cr *storageosv1alpha1.NFSServer) *corev1.PersistentVolumeClaim {
-	labels := map[string]string{
-		"app": cr.Name,
-	}
-	return &corev1.PersistentVolumeClaim{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      cr.Name + "-pvc",
-			Namespace: cr.Namespace,
-			Labels:    labels,
-		},
-		Spec: corev1.PersistentVolumeClaimSpec{},
-	}
-}
-
-// newPodForCR returns a busybox pod with the same name/namespace as the cr
-func newPodForCR(cr *storageosv1alpha1.NFSServer) *corev1.Pod {
-	labels := map[string]string{
-		"app": cr.Name,
-	}
-	return &corev1.Pod{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      cr.Name + "-pod",
-			Namespace: cr.Namespace,
-			Labels:    labels,
-		},
-		Spec: corev1.PodSpec{
-			Containers: []corev1.Container{
-				{
-					Name:    "busybox",
-					Image:   "busybox",
-					Command: []string{"sleep", "3600"},
-				},
-			},
-		},
-	}
-}
-
-// newPVForCR returns a busybox pod with the same name/namespace as the cr
-func newPVForCR(cr *storageosv1alpha1.NFSServer) *corev1.PersistentVolumeClaim {
-	labels := map[string]string{
-		"app": cr.Name,
-	}
-	return &corev1.PersistentVolumeClaim{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      cr.Name + "-pvc",
-			Namespace: cr.Namespace,
-			Labels:    labels,
-		},
-		Spec: corev1.PersistentVolumeClaimSpec{},
-	}
 }

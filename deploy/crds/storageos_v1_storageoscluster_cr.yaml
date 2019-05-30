@@ -6,7 +6,6 @@ metadata:
 spec:
   secretRefName: "storageos-api"
   secretRefNamespace: "default"
-  namespace: "storageos"
   # k8sDistro: openshift
   # tlsEtcdSecretRefName:
   # tlsEtcdSecretRefNamespace:
@@ -19,8 +18,8 @@ spec:
   #   csiExternalProvisionerContainer:
   #   csiExternalAttacherContainer:
   #   csiLivenessProbeContainer:
-  csi:
-    enable: true
+  # csi:
+  #   enable: false
   #   endpoint: /var/lib/kubelet/device-plugins/
   #   registrarSocketDir: /var/lib/kubelet/device-plugins/
   #   kubeletDir: /var/lib/kubelet
@@ -87,6 +86,7 @@ metadata:
 type: "kubernetes.io/storageos"
 data:
   # echo -n '<secret>' | base64
+  apiAddress: dGNwOi8vMTI3LjAuMC4xOjU3MDU=
   apiUsername: c3RvcmFnZW9z
   apiPassword: c3RvcmFnZW9z
   # Add base64 encoded TLS cert and key below if ingress.tls is set to true.

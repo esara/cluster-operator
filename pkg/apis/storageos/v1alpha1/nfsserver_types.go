@@ -24,10 +24,18 @@ const (
 	// DefaultNFSContainerImage is the name of the Ganesha container to run.
 	// TODO: change to an image we maintain.
 	DefaultNFSContainerImage = "apnar/docker-image-nfs-ganesha"
+
+	// DefaultSize is used when no Size is
+	DefaultSize = "5Gi"
 )
 
 // NFSServerSpec defines the desired state of NFSServer
 type NFSServerSpec struct {
+	Size string
+
+	// NFSContainer is the container image to use for the NFS server.
+	NFSContainer string `json:"nfsContainer"`
+
 	// INSERT ADDITIONAL SPEC FIELDS - desired state of cluster
 	// Important: Run "operator-sdk generate k8s" to regenerate code after modifying this file
 
@@ -40,6 +48,22 @@ type NFSServerSpec struct {
 
 	// The parameters to configure the NFS export
 	Exports []ExportsSpec `json:"exports,omitempty"`
+}
+
+// GetSize returns the requested volume size.
+func (s NFSServerSpec) GetSize() string {
+	if s.Size != "" {
+		return s.Size
+	}
+	return DefaultSize
+}
+
+// GetContainerImage returns the NFS server container image.
+func (s NFSServerSpec) GetContainerImage() string {
+	if s.NFSContainer != "" {
+		return s.NFSContainer
+	}
+	return DefaultNFSContainerImage
 }
 
 // ExportsSpec represents the spec of NFS exports
