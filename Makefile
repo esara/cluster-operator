@@ -22,7 +22,7 @@ build/upgrader:
 
 build/cluster-operator:
 	@echo "Building cluster-operator"
-	$(GO_ENV) $(GO_BUILD_CMD) -ldflags "$(LDFLAGS)" \
+	$(GO_ENV) $(GO_BUILD_CMD) -gcflags "-N -l" -ldflags "$(LDFLAGS)" \
 		-o ./build/_output/bin/cluster-operator \
 		./cmd/manager
 
