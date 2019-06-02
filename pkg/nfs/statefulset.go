@@ -6,6 +6,7 @@ import (
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	v1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
@@ -13,6 +14,11 @@ func (d *Deployment) createStatefulSet() error {
 
 	// ss := &appsv1.StatefulSet{}
 	replicas := int32(1)
+
+	size, err := resource.ParseQuantity(d.nfsServer.Spec.GetSize())
+	if err != nil {
+		return err
+	}
 
 	ss := &appsv1.StatefulSet{
 		TypeMeta: metav1.TypeMeta{
@@ -32,7 +38,7 @@ func (d *Deployment) createStatefulSet() error {
 				MatchLabels: labelsForStatefulSet(d.nfsServer.Name),
 			},
 			Template:             d.createPodTemplateSpec(),
-			VolumeClaimTemplates: d.createVolumeClaimTemplateSpecs(),
+			VolumeClaimTemplates: d.createVolumeClaimTemplateSpecs(size),
 		},
 	}
 
@@ -51,7 +57,7 @@ func (d *Deployment) createStatefulSet() error {
 	return d.createOrUpdateObject(ss)
 }
 
-func (d *Deployment) createVolumeClaimTemplateSpecs() []corev1.PersistentVolumeClaim {
+func (d *Deployment) createVolumeClaimTemplateSpecs(size resource.Quantity) []corev1.PersistentVolumeClaim {
 
 	scName := "fast"
 
@@ -61,14 +67,17 @@ func (d *Deployment) createVolumeClaimTemplateSpecs() []corev1.PersistentVolumeC
 				Name:      d.nfsServer.Name,
 				Namespace: d.nfsServer.Namespace,
 				Labels:    labelsForStatefulSet(d.nfsServer.Name),
+				Annotations: map[string]string{
+					"volume.beta.kubernetes.io/storage-class": "fast",
+				},
 			},
 			Spec: corev1.PersistentVolumeClaimSpec{
-				VolumeName:       d.nfsServer.Name,
+				// VolumeName:       d.nfsServer.Name,
 				AccessModes:      []corev1.PersistentVolumeAccessMode{corev1.ReadWriteOnce},
 				StorageClassName: &scName,
 				Resources: v1.ResourceRequirements{
 					Requests: v1.ResourceList{
-						v1.ResourceName(v1.ResourceStorage): d.nfsServer.Size,
+						v1.ResourceName(v1.ResourceStorage): size,
 					},
 				},
 			},
