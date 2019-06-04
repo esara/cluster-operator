@@ -6,6 +6,7 @@ import (
 	"strings"
 
 	storageosv1alpha1 "github.com/storageos/cluster-operator/pkg/apis/storageos/v1alpha1"
+	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -47,15 +48,20 @@ func addController(mgr manager.Manager, r reconcile.Reconciler) error {
 		return err
 	}
 
+	// Watch for PVC request for StorageOS shared volumes.
+	err = c.Watch(&source.Kind{Type: &corev1.PersistentVolumeClaim{}}, &handler.EnqueueRequestForObject{})
+	if err != nil {
+		return err
+	}
+
 	// Watch for changes to primary resource NFSServer
 	err = c.Watch(&source.Kind{Type: &storageosv1alpha1.NFSServer{}}, &handler.EnqueueRequestForObject{})
 	if err != nil {
 		return err
 	}
 
-	// TODO(user): Modify this to be the types you create that are owned by the primary resource
-	// Watch for changes to secondary resource Pods and requeue the owner NFSServer
-	err = c.Watch(&source.Kind{Type: &corev1.Pod{}}, &handler.EnqueueRequestForOwner{
+	// Watch for changes to secondary resource StatefulSet and requeue the owner NFSServer
+	err = c.Watch(&source.Kind{Type: &appsv1.StatefulSet{}}, &handler.EnqueueRequestForOwner{
 		IsController: true,
 		OwnerType:    &storageosv1alpha1.NFSServer{},
 	})
