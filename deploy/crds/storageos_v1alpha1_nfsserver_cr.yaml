@@ -4,3 +4,4 @@ metadata:
   name: example-nfsserver
 spec:
   size: 5Gi
+

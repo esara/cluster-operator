@@ -97,7 +97,7 @@ type ReconcilePVC struct {
 func (r *ReconcilePVC) Reconcile(request reconcile.Request) (reconcile.Result, error) {
 	// reqLogger := log.WithValues("Request.Namespace", request.Namespace, "Request.Name", request.Name)
 	// reqLogger.Info("Reconciling PVC")
-	log.Print("Reconciling PVC")
+	log.Printf("Reconciling PVC: %s/%s", request.Namespace, request.Name)
 
 	// Fetch the PVC instance
 	instance := &corev1.PersistentVolumeClaim{}
@@ -120,12 +120,23 @@ func (r *ReconcilePVC) Reconcile(request reconcile.Request) (reconcile.Result, e
 		return reconcile.Result{}, nil
 	}
 
+	log.Printf("PVC provisioner: %s", provisioner)
+
 	// Skip PVCs not using StorageOS provisioner.
-	if provisioner != "nfs.storageos.com" {
+	switch provisioner {
+	case "storageos", "kubernetes.io/storageos", "nfs.storageos.com":
+		log.Printf("PVC using StorageOS NFS provisioner %s/%s: %s", instance.Namespace, instance.Name, provisioner)
+		// ours
+	default:
 		log.Printf("Skip reconcile: PVC not using StorageOS NFS provisioner %s/%s: %s", instance.Namespace, instance.Name, provisioner)
 		// reqLogger.Info("Skip reconcile: PVC not using StorageOS provisioner", "PVC.Namespace", instance.Namespace, "PVC.Name", instance.Name, "PVC.Provisioner", provisioner)
 		return reconcile.Result{}, nil
 	}
+	// if provisioner != "storageos" && provisioner != "nfs.storageos.com" {
+	// 	log.Printf("Skip reconcile: PVC not using StorageOS NFS provisioner %s/%s: %s", instance.Namespace, instance.Name, provisioner)
+	// 	// reqLogger.Info("Skip reconcile: PVC not using StorageOS provisioner", "PVC.Namespace", instance.Namespace, "PVC.Name", instance.Name, "PVC.Provisioner", provisioner)
+	// 	return reconcile.Result{}, nil
+	// }
 
 	// Define a new NFSServer CR.
 	nfs := newNFSServerForPVC(instance)
