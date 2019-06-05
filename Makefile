@@ -26,8 +26,13 @@ build/cluster-operator:
 		-o ./build/_output/bin/cluster-operator \
 		./cmd/manager
 
-generate:
+generate: generate-sdk generate-clientset
+
+generate-sdk:
 	./build/operator-sdk generate k8s
+
+generate-clientset:
+	./scripts/generate-clientset.sh
 
 image/cluster-operator: operator-sdk
 	docker build \
