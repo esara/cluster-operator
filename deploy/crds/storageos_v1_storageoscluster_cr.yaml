@@ -10,16 +10,16 @@ spec:
   # tlsEtcdSecretRefName:
   # tlsEtcdSecretRefNamespace:
   # disableTelemetry: true
-  # images:
-  #   nodeContainer:
+  images:
+    nodeContainer: storageos/node:261e4d9
   #   initContainer:
   #   csiNodeDriverRegistrarContainer:
   #   csiClusterDriverRegistrarContainer:
   #   csiExternalProvisionerContainer:
   #   csiExternalAttacherContainer:
   #   csiLivenessProbeContainer:
-  # csi:
-  #   enable: false
+  csi:
+    enable: true
   #   endpoint: /var/lib/kubelet/device-plugins/
   #   registrarSocketDir: /var/lib/kubelet/device-plugins/
   #   kubeletDir: /var/lib/kubelet

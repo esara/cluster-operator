@@ -22,9 +22,9 @@ type StorageOSUpgradeStatus struct {
 	Completed bool `json:"completed"`
 }
 
-// +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
-
 // StorageOSUpgrade is the Schema for the storageosupgrades API
+// +genclient
+// +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
 // +k8s:openapi-gen=true
 type StorageOSUpgrade struct {
 	metav1.TypeMeta   `json:",inline"`
@@ -34,15 +34,11 @@ type StorageOSUpgrade struct {
 	Status StorageOSUpgradeStatus `json:"status,omitempty"`
 }
 
-// +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
-
 // StorageOSUpgradeList contains a list of StorageOSUpgrade
+// +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
+// +k8s:openapi-gen=true
 type StorageOSUpgradeList struct {
 	metav1.TypeMeta `json:",inline"`
 	metav1.ListMeta `json:"metadata,omitempty"`
 	Items           []StorageOSUpgrade `json:"items"`
-}
-
-func init() {
-	SchemeBuilder.Register(&StorageOSUpgrade{}, &StorageOSUpgradeList{})
 }

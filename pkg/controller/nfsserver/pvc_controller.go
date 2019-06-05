@@ -11,7 +11,7 @@ import (
 	e "errors"
 	"log"
 
-	storageosv1alpha1 "github.com/storageos/cluster-operator/pkg/apis/storageos/v1alpha1"
+	storageosv1 "github.com/storageos/cluster-operator/pkg/apis/storageos/v1"
 	corev1 "k8s.io/api/core/v1"
 	storagev1 "k8s.io/api/storage/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
@@ -69,7 +69,7 @@ func addProvisioner(mgr manager.Manager, r reconcile.Reconciler) error {
 	log.Print("watching PVC events")
 
 	// Watch for changes to secondary resource (NFSServer).
-	err = c.Watch(&source.Kind{Type: &storageosv1alpha1.NFSServer{}}, &handler.EnqueueRequestForOwner{
+	err = c.Watch(&source.Kind{Type: &storageosv1.NFSServer{}}, &handler.EnqueueRequestForOwner{
 		IsController: true,
 		OwnerType:    &corev1.PersistentVolumeClaim{},
 	})
@@ -148,7 +148,7 @@ func (r *ReconcilePVC) Reconcile(request reconcile.Request) (reconcile.Result, e
 	}
 
 	// Check if this NFS Server already exists.
-	found := &storageosv1alpha1.NFSServer{}
+	found := &storageosv1.NFSServer{}
 	err = r.client.Get(context.TODO(), types.NamespacedName{Name: nfs.Name, Namespace: nfs.Namespace}, found)
 	if err != nil && errors.IsNotFound(err) {
 		// reqLogger.Info("Creating a new NFS server", "NFSServer.Namespace", nfs.Namespace, "NFSServer.Name", nfs.Name)
@@ -174,21 +174,21 @@ func (r *ReconcilePVC) Reconcile(request reconcile.Request) (reconcile.Result, e
 
 // newNFSServerForPVC returns an NFSServer CR with the same name/namespace as
 // the PVC.
-func newNFSServerForPVC(pvc *corev1.PersistentVolumeClaim) *storageosv1alpha1.NFSServer {
+func newNFSServerForPVC(pvc *corev1.PersistentVolumeClaim) *storageosv1.NFSServer {
 
 	// TODO(simon): inherit pvc labels?
 	labels := map[string]string{
 		"app": pvc.Name,
 	}
-	return &storageosv1alpha1.NFSServer{
+	return &storageosv1.NFSServer{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      pvc.Name,
 			Namespace: pvc.Namespace,
 			Labels:    labels,
 		},
-		Spec: storageosv1alpha1.NFSServerSpec{
+		Spec: storageosv1.NFSServerSpec{
 			Annotations: pvc.Annotations,
-			Exports: []storageosv1alpha1.ExportsSpec{
+			Exports: []storageosv1.ExportsSpec{
 				{
 					Name: pvc.Name,
 					// AccessMode: pvc.AccessMode,

@@ -58,9 +58,9 @@ type JobStatus struct {
 	Completed bool `json:"completed"`
 }
 
-// +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
-
 // Job is the Schema for the jobs API
+// +genclient
+// +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
 // +k8s:openapi-gen=true
 type Job struct {
 	metav1.TypeMeta   `json:",inline"`
@@ -70,15 +70,11 @@ type Job struct {
 	Status JobStatus `json:"status,omitempty"`
 }
 
-// +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
-
 // JobList contains a list of Job
+// +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
+// +k8s:openapi-gen=true
 type JobList struct {
 	metav1.TypeMeta `json:",inline"`
 	metav1.ListMeta `json:"metadata,omitempty"`
 	Items           []Job `json:"items"`
-}
-
-func init() {
-	SchemeBuilder.Register(&Job{}, &JobList{})
 }

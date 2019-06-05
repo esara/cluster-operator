@@ -13,7 +13,7 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License.
 */
-package v1alpha1
+package v1
 
 import (
 	v1 "k8s.io/api/core/v1"
@@ -28,6 +28,27 @@ const (
 	// DefaultSize is used when no Size is
 	DefaultSize = "5Gi"
 )
+
+// NFSServer is the Schema for the nfsservers API.
+// +genclient
+// +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
+// +k8s:openapi-gen=true
+type NFSServer struct {
+	metav1.TypeMeta   `json:",inline"`
+	metav1.ObjectMeta `json:"metadata,omitempty"`
+
+	Spec   NFSServerSpec   `json:"spec,omitempty"`
+	Status NFSServerStatus `json:"status,omitempty"`
+}
+
+// NFSServerList contains a list of NFSServer
+// +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
+// +k8s:openapi-gen=true
+type NFSServerList struct {
+	metav1.TypeMeta `json:",inline"`
+	metav1.ListMeta `json:"metadata,omitempty"`
+	Items           []NFSServer `json:"items"`
+}
 
 // NFSServerSpec defines the desired state of NFSServer
 type NFSServerSpec struct {
@@ -117,29 +138,4 @@ type AllowedClientsSpec struct {
 type NFSServerStatus struct {
 	// INSERT ADDITIONAL STATUS FIELD - define observed state of cluster
 	// Important: Run "operator-sdk generate k8s" to regenerate code after modifying this file
-}
-
-// +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
-
-// NFSServer is the Schema for the nfsservers API
-// +k8s:openapi-gen=true
-type NFSServer struct {
-	metav1.TypeMeta   `json:",inline"`
-	metav1.ObjectMeta `json:"metadata,omitempty"`
-
-	Spec   NFSServerSpec   `json:"spec,omitempty"`
-	Status NFSServerStatus `json:"status,omitempty"`
-}
-
-// +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
-
-// NFSServerList contains a list of NFSServer
-type NFSServerList struct {
-	metav1.TypeMeta `json:",inline"`
-	metav1.ListMeta `json:"metadata,omitempty"`
-	Items           []NFSServer `json:"items"`
-}
-
-func init() {
-	SchemeBuilder.Register(&NFSServer{}, &NFSServerList{})
 }

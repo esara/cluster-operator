@@ -5,7 +5,7 @@ import (
 	"log"
 	"strings"
 
-	storageosv1alpha1 "github.com/storageos/cluster-operator/pkg/apis/storageos/v1alpha1"
+	storageosv1 "github.com/storageos/cluster-operator/pkg/apis/storageos/v1"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
@@ -55,7 +55,7 @@ func addController(mgr manager.Manager, r reconcile.Reconciler) error {
 	}
 
 	// Watch for changes to primary resource NFSServer
-	err = c.Watch(&source.Kind{Type: &storageosv1alpha1.NFSServer{}}, &handler.EnqueueRequestForObject{})
+	err = c.Watch(&source.Kind{Type: &storageosv1.NFSServer{}}, &handler.EnqueueRequestForObject{})
 	if err != nil {
 		return err
 	}
@@ -63,7 +63,7 @@ func addController(mgr manager.Manager, r reconcile.Reconciler) error {
 	// Watch for changes to secondary resource StatefulSet and requeue the owner NFSServer
 	err = c.Watch(&source.Kind{Type: &appsv1.StatefulSet{}}, &handler.EnqueueRequestForOwner{
 		IsController: true,
-		OwnerType:    &storageosv1alpha1.NFSServer{},
+		OwnerType:    &storageosv1.NFSServer{},
 	})
 	if err != nil {
 		return err
@@ -100,7 +100,7 @@ func (r *ReconcileNFSServer) Reconcile(request reconcile.Request) (reconcile.Res
 	log.Print("Reconciling NFSServer")
 
 	// Fetch the NFSServer instance
-	instance := &storageosv1alpha1.NFSServer{}
+	instance := &storageosv1.NFSServer{}
 	err := r.client.Get(context.TODO(), request.NamespacedName, instance)
 	if err != nil {
 		if errors.IsNotFound(err) {
@@ -154,7 +154,7 @@ func (r *ReconcileNFSServer) Reconcile(request reconcile.Request) (reconcile.Res
 	return reconcile.Result{}, nil
 }
 
-func (r *ReconcileNFSServer) reconcile(instance *storageosv1alpha1.NFSServer) error {
+func (r *ReconcileNFSServer) reconcile(instance *storageosv1.NFSServer) error {
 
 	// Finalizers are set when an object should be deleted. Apply deploy only
 	// when finalizers is empty.

@@ -183,9 +183,9 @@ type StorageOSClusterStatus struct {
 	Members          MembersStatus         `json:"members"`
 }
 
-// +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
-
 // StorageOSCluster is the Schema for the storageosclusters API
+// +genclient
+// +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
 // +k8s:openapi-gen=true
 type StorageOSCluster struct {
 	metav1.TypeMeta   `json:",inline"`
@@ -195,17 +195,13 @@ type StorageOSCluster struct {
 	Status StorageOSClusterStatus `json:"status,omitempty"`
 }
 
-// +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
-
 // StorageOSClusterList contains a list of StorageOSCluster
+// +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
+// +k8s:openapi-gen=true
 type StorageOSClusterList struct {
 	metav1.TypeMeta `json:",inline"`
 	metav1.ListMeta `json:"metadata,omitempty"`
 	Items           []StorageOSCluster `json:"items"`
-}
-
-func init() {
-	SchemeBuilder.Register(&StorageOSCluster{}, &StorageOSClusterList{})
 }
 
 // MembersStatus stores the status details of cluster member nodes.

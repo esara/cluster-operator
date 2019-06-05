@@ -4,7 +4,7 @@ import (
 	"context"
 	"fmt"
 
-	storageosv1alpha1 "github.com/storageos/cluster-operator/pkg/apis/storageos/v1alpha1"
+	storageosv1 "github.com/storageos/cluster-operator/pkg/apis/storageos/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/client-go/tools/record"
@@ -15,14 +15,14 @@ import (
 // resource creation and update.
 type Deployment struct {
 	client    client.Client
-	nfsServer *storageosv1alpha1.NFSServer
+	nfsServer *storageosv1.NFSServer
 	recorder  record.EventRecorder
 	scheme    *runtime.Scheme
 }
 
 // NewDeployment creates a new Deployment given a k8c client, storageos manifest
 // and an event broadcast recorder.
-func NewDeployment(client client.Client, nfsServer *storageosv1alpha1.NFSServer, recorder record.EventRecorder, scheme *runtime.Scheme) *Deployment {
+func NewDeployment(client client.Client, nfsServer *storageosv1.NFSServer, recorder record.EventRecorder, scheme *runtime.Scheme) *Deployment {
 	return &Deployment{
 		client:    client,
 		nfsServer: nfsServer,

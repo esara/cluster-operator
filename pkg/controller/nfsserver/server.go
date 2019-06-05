@@ -1,7 +1,7 @@
 package nfsserver
 
 import (
-	storageosv1alpha1 "github.com/storageos/cluster-operator/pkg/apis/storageos/v1alpha1"
+	storageosv1 "github.com/storageos/cluster-operator/pkg/apis/storageos/v1"
 	"github.com/storageos/cluster-operator/pkg/nfs"
 )
 
@@ -9,7 +9,7 @@ import (
 // server and the deployment together, ensuring deployment interacts with the
 // right server resource.
 type Server struct {
-	cached *storageosv1alpha1.NFSServer
+	cached *storageosv1.NFSServer
 	// deployment implements the Deployment interface. This is
 	// cached for a cluserverster to avoid recreating it without any change to
 	// the server cached. Every new server will create its unique deployment.
@@ -17,7 +17,7 @@ type Server struct {
 }
 
 // NewServer creates a new NFS Server.  It caches the passed NFSServer object.
-func NewServer(obj *storageosv1alpha1.NFSServer) *Server {
+func NewServer(obj *storageosv1.NFSServer) *Server {
 	return &Server{cached: obj}
 }
 
@@ -29,7 +29,7 @@ func (s *Server) SetDeployment(r *ReconcileNFSServer) {
 
 // IsCurrentServer compares the server attributes to check if the given
 // server is the same as the current server.
-func (s *Server) IsCurrentServer(server *storageosv1alpha1.NFSServer) bool {
+func (s *Server) IsCurrentServer(server *storageosv1.NFSServer) bool {
 	if (s.cached.GetName() == server.GetName()) &&
 		(s.cached.GetNamespace() == server.GetNamespace()) {
 		return true
