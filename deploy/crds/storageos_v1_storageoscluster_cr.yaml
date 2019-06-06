@@ -11,7 +11,7 @@ spec:
   # tlsEtcdSecretRefNamespace:
   # disableTelemetry: true
   images:
-    nodeContainer: storageos/node:261e4d9
+    nodeContainer: storageos/node:test
   #   initContainer:
   #   csiNodeDriverRegistrarContainer:
   #   csiClusterDriverRegistrarContainer:
