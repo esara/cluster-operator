@@ -7,5 +7,5 @@ import (
 func init() {
 	// AddToManagerFuncs is a list of functions to create controllers and add them to a manager.
 	AddToManagerFuncs = append(AddToManagerFuncs, nfsserver.AddController)
-	AddToManagerFuncs = append(AddToManagerFuncs, nfsserver.AddProvisioner)
+	// AddToManagerFuncs = append(AddToManagerFuncs, nfsserver.AddProvisioner)
 }

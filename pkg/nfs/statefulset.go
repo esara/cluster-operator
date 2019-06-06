@@ -32,7 +32,7 @@ func (d *Deployment) createStatefulSet() error {
 			OwnerReferences: d.nfsServer.ObjectMeta.OwnerReferences,
 		},
 		Spec: appsv1.StatefulSetSpec{
-			ServiceName: "storageos",
+			ServiceName: d.nfsServer.Name,
 			Replicas:    &replicas,
 			Selector: &metav1.LabelSelector{
 				MatchLabels: labelsForStatefulSet(d.nfsServer.Name),
@@ -64,7 +64,8 @@ func (d *Deployment) createVolumeClaimTemplateSpecs(size resource.Quantity) []co
 	return []corev1.PersistentVolumeClaim{
 		{
 			ObjectMeta: metav1.ObjectMeta{
-				Name:      d.nfsServer.Name,
+				// Name:      d.nfsServer.Name,
+				Name:      "nfs",
 				Namespace: d.nfsServer.Namespace,
 				Labels:    labelsForStatefulSet(d.nfsServer.Name),
 				Annotations: map[string]string{
@@ -93,16 +94,17 @@ func (d *Deployment) createPodTemplateSpec() corev1.PodTemplateSpec {
 
 	return v1.PodTemplateSpec{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      d.nfsServer.Name,
-			Namespace: d.nfsServer.Namespace,
-			Labels:    labelsForStatefulSet(d.nfsServer.Name),
+			// Name:      d.nfsServer.Name,
+			// Namespace: d.nfsServer.Namespace,
+			Labels: labelsForStatefulSet(d.nfsServer.Name),
 		},
 		Spec: v1.PodSpec{
 			Containers: []v1.Container{
 				{
 					ImagePullPolicy: "IfNotPresent",
-					Name:            d.nfsServer.Name,
-					Image:           d.nfsServer.Spec.GetContainerImage(),
+					Name:            "ganesha",
+					// Name:            d.nfsServer.Name,
+					Image: d.nfsServer.Spec.GetContainerImage(),
 					// Args: []string{"nfs", "server", "--ganeshaConfigPath=" + NFSConfigMapPath + "/" + nfsServer.name},
 					Ports: []v1.ContainerPort{
 						{

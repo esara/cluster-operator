@@ -172,12 +172,12 @@ func (s *Deployment) Deploy() error {
 		if err := s.createClusterRoleBindingForSCC(); err != nil {
 			return err
 		}
-
-		// Only create NFS StorageClass when CSI is enabled.
-		if err := s.createNFSStorageClass(); err != nil {
-			return err
-		}
 	}
+
+	// // Only create NFS StorageClass when CSI is enabled.
+	// if err := s.createNFSStorageClass(); err != nil {
+	// 	return err
+	// }
 
 	// Create role for Pod Fencing.
 	if !s.stos.Spec.DisableFencing {
@@ -185,6 +185,16 @@ func (s *Deployment) Deploy() error {
 			return err
 		}
 		if err := s.createClusterRoleBindingForFencing(); err != nil {
+			return err
+		}
+	}
+
+	// Create role for NFS.
+	if !s.stos.Spec.DisableNFS {
+		if err := s.createClusterRoleForNFS(); err != nil {
+			return err
+		}
+		if err := s.createClusterRoleBindingForNFS(); err != nil {
 			return err
 		}
 	}

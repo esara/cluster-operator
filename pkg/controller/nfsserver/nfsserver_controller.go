@@ -171,26 +171,25 @@ func (r *ReconcileNFSServer) reconcile(instance *storageosv1.NFSServer) error {
 			}
 			return err
 		}
+	} else {
+		// Delete the deployment once the finalizers are set on the cluster
+		// resource.
+		r.recorder.Event(instance, corev1.EventTypeNormal, "Terminating", "Deleting the NFS server.")
+
+		// if err := instance.DeleteDeployment(); err != nil {
+		// 	return err
+		// }
+
+		// r.ResetCurrentCluster()
+
+		// Reset finalizers and let k8s delete the object.
+		// When finalizers are set on an object, metadata.deletionTimestamp is
+		// also set. deletionTimestamp helps the garbage collector identify
+		// when to delete an object. k8s deletes the object only once the
+		// list of finalizers is empty.
+		instance.SetFinalizers([]string{})
+		return r.client.Update(context.Background(), instance)
 	}
-	// else {
-	// 	// Delete the deployment once the finalizers are set on the cluster
-	// 	// resource.
-	// 	r.recorder.Event(instance, corev1.EventTypeNormal, "Terminating", "Deleting all the resources...")
-
-	// 	if err := instance.DeleteDeployment(); err != nil {
-	// 		return err
-	// 	}
-
-	// 	// r.ResetCurrentCluster()
-
-	// 	// Reset finalizers and let k8s delete the object.
-	// 	// When finalizers are set on an object, metadata.deletionTimestamp is
-	// 	// also set. deletionTimestamp helps the garbage collector identify
-	// 	// when to delete an object. k8s deletes the object only once the
-	// 	// list of finalizers is empty.
-	// 	m.SetFinalizers([]string{})
-	// 	return r.client.Update(context.Background(), m)
-	// }
 
 	return nil
 

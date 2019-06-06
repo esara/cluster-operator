@@ -147,6 +147,9 @@ type StorageOSClusterSpec struct {
 	// added to the StorageOS role.
 	DisableFencing bool `json:"disableFencing"`
 
+	// DisableNFS can be set to true to disable ReadWriteMany support.
+	DisableNFS bool `json:"disableNFS"`
+
 	// Disable Telemetry.
 	DisableTelemetry bool `json:"disableTelemetry"`
 

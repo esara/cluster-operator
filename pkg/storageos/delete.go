@@ -79,10 +79,6 @@ func (s *Deployment) Delete() error {
 			return err
 		}
 
-		// Only created for CSI
-		if err := s.deleteStorageClass("nfs"); err != nil {
-			return err
-		}
 	}
 
 	// Delete cluster role for openshift security context constraints.
@@ -103,6 +99,17 @@ func (s *Deployment) Delete() error {
 		}
 
 		if err := s.deleteClusterRole(FencingClusterRoleName); err != nil {
+			return err
+		}
+	}
+
+	// Delete role for NFS.
+	if !s.stos.Spec.DisableNFS {
+		if err := s.deleteClusterRoleBinding(NFSClusterBindingName); err != nil {
+			return err
+		}
+
+		if err := s.deleteClusterRole(NFSClusterRoleName); err != nil {
 			return err
 		}
 	}

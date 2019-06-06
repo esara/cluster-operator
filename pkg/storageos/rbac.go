@@ -31,6 +31,9 @@ const (
 
 	FencingClusterRoleName    = "storageos:pod-fencer"
 	FencingClusterBindingName = "storageos:pod-fencer"
+
+	NFSClusterRoleName    = "storageos:nfs-provisioner"
+	NFSClusterBindingName = "storageos:nfs-provisioner"
 )
 
 func (s *Deployment) createServiceAccount(name string) error {
@@ -176,6 +179,17 @@ func (s *Deployment) createClusterRoleForFencing() error {
 		},
 	}
 	return s.createClusterRole(FencingClusterRoleName, rules)
+}
+
+func (s *Deployment) createClusterRoleForNFS() error {
+	rules := []rbacv1.PolicyRule{
+		{
+			APIGroups: []string{"storageos.com"},
+			Resources: []string{"nfsservers"},
+			Verbs:     []string{"get", "list", "watch", "create", "update", "patch", "delete"},
+		},
+	}
+	return s.createClusterRole(NFSClusterRoleName, rules)
 }
 
 func (s *Deployment) createClusterRoleForDriverRegistrar() error {
@@ -348,6 +362,22 @@ func (s *Deployment) createClusterRoleBindingForFencing() error {
 		APIGroup: "rbac.authorization.k8s.io",
 	}
 	return s.createClusterRoleBinding(FencingClusterBindingName, subjects, roleRef)
+}
+
+func (s *Deployment) createClusterRoleBindingForNFS() error {
+	subjects := []rbacv1.Subject{
+		{
+			Kind:      "ServiceAccount",
+			Name:      DaemonsetSA,
+			Namespace: s.stos.Spec.GetResourceNS(),
+		},
+	}
+	roleRef := rbacv1.RoleRef{
+		Kind:     "ClusterRole",
+		Name:     NFSClusterRoleName,
+		APIGroup: "rbac.authorization.k8s.io",
+	}
+	return s.createClusterRoleBinding(NFSClusterBindingName, subjects, roleRef)
 }
 
 func (s *Deployment) createClusterRoleBindingForDriverRegistrar() error {
