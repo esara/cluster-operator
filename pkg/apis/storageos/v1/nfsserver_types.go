@@ -69,6 +69,13 @@ type NFSServerSpec struct {
 
 	// The parameters to configure the NFS export
 	Exports []ExportsSpec `json:"exports,omitempty"`
+
+	// Reclamation policy for the persistent volume shared to the user's pod.
+	PersistentVolumeReclaimPolicy v1.PersistentVolumeReclaimPolicy
+
+	// PV mount options. Not validated - mount of the PVs will simply fail if
+	// one is invalid.
+	MountOptions []string
 }
 
 // GetSize returns the requested volume size.

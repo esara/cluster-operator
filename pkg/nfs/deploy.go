@@ -3,12 +3,16 @@ package nfs
 import (
 	"log"
 
+	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
 const (
 	appName         = "storageos"
 	statefulsetKind = "statefulset"
+
+	DefaultNFSPort = 2049
+	DefaultRPCPort = 111
 )
 
 // Deploy creates all the resources required to provision an NFS PV on top of
@@ -17,53 +21,32 @@ func (d *Deployment) Deploy() error {
 
 	log.Printf("Deploy: %#v\n", d.nfsServer)
 
-	if err := d.createStatefulSet(); err != nil {
+	size, err := resource.ParseQuantity(d.nfsServer.Spec.GetSize())
+	if err != nil {
+		return err
+	}
+
+	if err := d.createService(DefaultNFSPort, DefaultRPCPort); err != nil {
+		return err
+	}
+	if err := d.createStatefulSet(size, DefaultNFSPort, DefaultRPCPort); err != nil {
+		return err
+	}
+	if err := d.createPV(server, path, size); err != nil {
 		return err
 	}
 	return nil
 }
 
-// func (d *Deployment) createStatefulSet() error {
-
-// 	ss := appsv1.StatefulSet{
-// 		ObjectMeta: metav1.ObjectMeta{
-// 			Name:      d.nfsServer.Name,
-// 			Namespace: d.nfsServer.Namespace,
-// 			// Labels:          createAppLabels(d.nfsServer),
-// 			OwnerReferences: []metav1.OwnerReference{d.nfsServer.ownerRef},
-// 		},
-// 		Spec: appsv1.StatefulSetSpec{
-// 			Replicas: &replicas,
-// 			Selector: &metav1.LabelSelector{
-// 				// MatchLabels: createAppLabels(nfsServer),
-// 			},
-// 			Template:    nfsPodSpec,
-// 			ServiceName: d.nfsServer.name,
-// 		},
-// 	}
-// }
-
-// createPVC returns a busybox pod with the same name/namespace as the cr
-// func (d *Deployment) createPVC() error {
-
-// 	scName := "fast"
-
-// 	pvc := &corev1.PersistentVolumeClaim{
-// 		ObjectMeta: metav1.ObjectMeta{
-// 			Name:      d.nfsServer.Name,
-// 			Namespace: d.nfsServer.Namespace,
-// 		},
-// 		Spec: corev1.PersistentVolumeClaimSpec{
-// 			AccessModes:      []corev1.PersistentVolumeAccessMode{corev1.ReadWriteOnce},
-// 			StorageClassName: &scName,
-// 		},
-// 	}
-// 	return d.createOrUpdateObject(pvc)
-// }
-
 func labelsForStatefulSet(name string) map[string]string {
-	return map[string]string{"app": appName, "storageos_cr": name, "kind": statefulsetKind}
+	return map[string]string{"app": appName, "storageos_cr": name}
 }
+
+// func labelsForApp(nfsServer *storageosv1.NFSServer) map[string]string {
+// 	return map[string]string{
+// 		"app": nfsServer.Name,
+// 	}
+// }
 
 func addOwnerRefToObject(obj metav1.Object, ownerRef metav1.OwnerReference) {
 	obj.SetOwnerReferences(append(obj.GetOwnerReferences(), ownerRef))
