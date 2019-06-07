@@ -10,7 +10,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
-func (d *Deployment) createStatefulSet(size resource., nfsPort int, rpcPort int) error {
+func (d *Deployment) createStatefulSet(size resource.Quantity, nfsPort int, rpcPort int) error {
 
 	// ss := &appsv1.StatefulSet{}
 	replicas := int32(1)

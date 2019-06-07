@@ -26,13 +26,14 @@ func (d *Deployment) Deploy() error {
 		return err
 	}
 
-	if err := d.createService(DefaultNFSPort, DefaultRPCPort); err != nil {
+	svc, err := d.ensureService(DefaultNFSPort, DefaultRPCPort)
+	if err != nil {
 		return err
 	}
 	if err := d.createStatefulSet(size, DefaultNFSPort, DefaultRPCPort); err != nil {
 		return err
 	}
-	if err := d.createPV(server, path, size); err != nil {
+	if err := d.createPV(svc.Spec.ClusterIP, "", size); err != nil {
 		return err
 	}
 	return nil

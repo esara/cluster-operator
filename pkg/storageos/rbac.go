@@ -188,6 +188,11 @@ func (s *Deployment) createClusterRoleForNFS() error {
 			Resources: []string{"nfsservers"},
 			Verbs:     []string{"get", "list", "watch", "create", "update", "patch", "delete"},
 		},
+		{
+			APIGroups: []string{""},
+			Resources: []string{"persistentvolumes"},
+			Verbs:     []string{"get"},
+		},
 	}
 	return s.createClusterRole(NFSClusterRoleName, rules)
 }

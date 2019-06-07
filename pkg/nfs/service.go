@@ -1,10 +1,26 @@
 package nfs
 
 import (
+	"context"
+
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/intstr"
 )
+
+func (d *Deployment) ensureService(nfsPort int, rpcPort int) (*corev1.Service, error) {
+
+	svc, err := d.getService()
+	if err == nil {
+		return svc, err
+	}
+
+	if err := d.createService(nfsPort, rpcPort); err != nil {
+		return nil, err
+	}
+	return d.getService()
+}
 
 func (d *Deployment) createService(nfsPort int, rpcPort int) error {
 
@@ -16,9 +32,9 @@ func (d *Deployment) createService(nfsPort int, rpcPort int) error {
 			OwnerReferences: d.nfsServer.ObjectMeta.OwnerReferences,
 		},
 		Spec: corev1.ServiceSpec{
-			Selector: labelsForStatefulSet(nfsServer),
-			Type:     v1.ServiceTypeClusterIP,
-			Ports:    []v1.ServicePort{
+			Selector: labelsForStatefulSet(d.nfsServer.Name),
+			Type:     corev1.ServiceTypeClusterIP,
+			Ports: []corev1.ServicePort{
 				{
 					Name:       "nfs",
 					Port:       int32(nfsPort),
@@ -36,3 +52,16 @@ func (d *Deployment) createService(nfsPort int, rpcPort int) error {
 	return d.createOrUpdateObject(svc)
 }
 
+func (d *Deployment) getService() (*corev1.Service, error) {
+
+	service := &corev1.Service{}
+
+	namespacedService := types.NamespacedName{
+		Namespace: d.nfsServer.Namespace,
+		Name:      d.nfsServer.Name,
+	}
+	if err := d.client.Get(context.TODO(), namespacedService, service); err != nil {
+		return nil, err
+	}
+	return service, nil
+}

@@ -32,8 +32,7 @@ func NewDeployment(client client.Client, nfsServer *storageosv1.NFSServer, recor
 }
 
 // createOrUpdateObject attempts to create a given object. If the object already
-// exists and `Deployment.update` is false, no change is made. If update is true,
-// the existing object is updated.
+// exists the existing object is updated.
 func (d *Deployment) createOrUpdateObject(obj runtime.Object) error {
 	if err := d.client.Create(context.Background(), obj); err != nil {
 		if apierrors.IsAlreadyExists(err) {
