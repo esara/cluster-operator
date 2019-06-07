@@ -33,7 +33,7 @@ func (d *Deployment) Deploy() error {
 	if err := d.createStatefulSet(size, DefaultNFSPort, DefaultRPCPort); err != nil {
 		return err
 	}
-	if err := d.createPV(svc.Spec.ClusterIP, "", size); err != nil {
+	if err := d.createPV(svc.Spec.ClusterIP, "/export", size); err != nil {
 		return err
 	}
 	return nil
