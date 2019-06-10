@@ -78,7 +78,6 @@ func (s *Deployment) Delete() error {
 		if err := s.deleteCSISecrets(); err != nil {
 			return err
 		}
-
 	}
 
 	// Delete cluster role for openshift security context constraints.

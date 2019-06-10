@@ -227,6 +227,7 @@ func (r *ReconcileStorageOSCluster) reconcile(m *storageosv1.StorageOSCluster) e
 			if !strings.HasPrefix(err.Error(), "Operation cannot be fulfilled") {
 				r.recorder.Event(m, corev1.EventTypeWarning, "FailedCreation", err.Error())
 			}
+			log.Printf("failed to deploy cluster: %v", err)
 			return err
 		}
 	} else {
