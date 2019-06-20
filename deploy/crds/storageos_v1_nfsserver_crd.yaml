@@ -11,5 +11,21 @@ spec:
     singular: nfsserver
   scope: Namespaced
   version: v1
-  subresources:
-    status: {}
+  validation:
+    openAPIV3Schema:
+      properties:
+        apiVersion:
+          type: string
+        kind:
+          type: string
+        metadata: {}
+        spec:
+          properties:
+            size:
+              type: string
+        status:
+          properties:
+            phase:
+              type: string
+            remoteTarget:
+              type: string

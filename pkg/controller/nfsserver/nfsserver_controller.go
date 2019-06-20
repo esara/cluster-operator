@@ -49,19 +49,34 @@ func addController(mgr manager.Manager, r reconcile.Reconciler) error {
 	}
 
 	// Watch for PVC request for StorageOS shared volumes.
-	err = c.Watch(&source.Kind{Type: &corev1.PersistentVolumeClaim{}}, &handler.EnqueueRequestForObject{})
-	if err != nil {
-		return err
-	}
+	// TODO: re-enable for non-CSI
+	// err = c.Watch(&source.Kind{Type: &corev1.PersistentVolumeClaim{}}, &handler.EnqueueRequestForObject{})
+	// if err != nil {
+	// 	return err
+	// }
 
-	// Watch for changes to primary resource NFSServer
+	// Watch for changes to primary resource NFSServer.
 	err = c.Watch(&source.Kind{Type: &storageosv1.NFSServer{}}, &handler.EnqueueRequestForObject{})
 	if err != nil {
 		return err
 	}
 
-	// Watch for changes to secondary resource StatefulSet and requeue the owner NFSServer
+	// Watch for changes to secondary resource StatefulSet and requeue the owner
+	// NFSServer.
 	err = c.Watch(&source.Kind{Type: &appsv1.StatefulSet{}}, &handler.EnqueueRequestForOwner{
+		IsController: true,
+		OwnerType:    &storageosv1.NFSServer{},
+	})
+	if err != nil {
+		return err
+	}
+
+	// Watch for changes to secondary resource Service and requeue the owner
+	// NFSServer.
+	//
+	// This is used to update the NFSServer Status with the connection endpoint
+	// once it comes online.
+	err = c.Watch(&source.Kind{Type: &corev1.Service{}}, &handler.EnqueueRequestForOwner{
 		IsController: true,
 		OwnerType:    &storageosv1.NFSServer{},
 	})
@@ -78,10 +93,10 @@ var _ reconcile.Reconciler = &ReconcileNFSServer{}
 type ReconcileNFSServer struct {
 	// This client, initialized using mgr.Client() above, is a split client
 	// that reads objects from the cache and writes to the apiserver
-	client        client.Client
-	scheme        *runtime.Scheme
-	recorder      record.EventRecorder
-	currentServer *Server
+	client   client.Client
+	scheme   *runtime.Scheme
+	recorder record.EventRecorder
+	// currentServer *Server
 }
 
 // // SetCurrentClusterIfNone checks if there's any existing current cluster and
@@ -97,6 +112,7 @@ type ReconcileNFSServer struct {
 func (r *ReconcileNFSServer) Reconcile(request reconcile.Request) (reconcile.Result, error) {
 	// reqLogger := log.WithValues("Request.Namespace", request.Namespace, "Request.Name", request.Name)
 	// reqLogger.Info("Reconciling NFSServer")
+	log.Printf("Request.Namespace: %s, Request.Name: %s", request.Namespace, request.Name)
 	log.Print("Reconciling NFSServer")
 
 	// Fetch the NFSServer instance
@@ -160,6 +176,8 @@ func (r *ReconcileNFSServer) reconcile(instance *storageosv1.NFSServer) error {
 	// when finalizers is empty.
 	if len(instance.GetFinalizers()) == 0 {
 
+		log.Printf("reconciling NFS Server: %s/%s", instance.Namespace, instance.Name)
+
 		d := nfs.NewDeployment(r.client, instance, r.recorder, r.scheme)
 
 		if err := d.Deploy(); err != nil {
@@ -172,6 +190,9 @@ func (r *ReconcileNFSServer) reconcile(instance *storageosv1.NFSServer) error {
 			return err
 		}
 	} else {
+
+		log.Printf("removing the NFS server: %s/%s", instance.Namespace, instance.Name)
+
 		// Delete the deployment once the finalizers are set on the cluster
 		// resource.
 		r.recorder.Event(instance, corev1.EventTypeNormal, "Terminating", "Deleting the NFS server.")
@@ -179,6 +200,11 @@ func (r *ReconcileNFSServer) reconcile(instance *storageosv1.NFSServer) error {
 		// if err := instance.DeleteDeployment(); err != nil {
 		// 	return err
 		// }
+
+		d := nfs.NewDeployment(r.client, instance, r.recorder, r.scheme)
+		if err := d.Delete(); err != nil {
+			return err
+		}
 
 		// r.ResetCurrentCluster()
 

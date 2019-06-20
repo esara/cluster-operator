@@ -23,10 +23,16 @@ import (
 const (
 	// DefaultNFSContainerImage is the name of the Ganesha container to run.
 	// TODO: change to an image we maintain.
-	DefaultNFSContainerImage = "apnar/nfs-ganesha"
+	DefaultNFSContainerImage = "storageos/nfs-ganesha"
 
 	// DefaultSize is used when no Size is
 	DefaultSize = "5Gi"
+
+	PhasePending = "Pending"
+	PhaseRunning = "Running"
+	// PhaseSucceeded = "Succeeded"
+	// PhaseFailed    = "Failed"
+	PhaseUnknown = "Unknown"
 )
 
 // NFSServer is the Schema for the nfsservers API.
@@ -141,8 +147,35 @@ type AllowedClientsSpec struct {
 	Squash string `json:"squash,omitempty"`
 }
 
-// NFSServerStatus defines the observed state of NFSServer
+// NFSServerStatus defines the observed state of the NFSServer.
 type NFSServerStatus struct {
-	// INSERT ADDITIONAL STATUS FIELD - define observed state of cluster
-	// Important: Run "operator-sdk generate k8s" to regenerate code after modifying this file
+
+	// RemoteTarget is the connection string that clients can use to access the
+	// shared filesystem.
+	RemoteTarget string `json:"remoteTarget"`
+
+	// Phase is a simple, high-level summary of where the NFS Server is in its
+	// lifecycle. Phase will be set to Ready when the NFS Server is ready for
+	// use.  It is intended to be similar to the PodStatus Phase described at:
+	// https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.14/#podstatus-v1-core
+	//
+	// There are five possible phase values:
+	//   - Pending: The NFS Server has been accepted by the Kubernetes system,
+	//     but one or more of the components has not been created. This includes
+	//     time before being scheduled as well as time spent downloading images
+	//     over the network, which could take a while.
+	//   - Running: The NFS Server has been bound to a node, and all of the
+	//     dependencies have been created.
+	//   - Succeeded: All NFS Server dependencies have terminated in success,
+	//     and will not be restarted.
+	//   - Failed: All NFS Server dependencies in the pod have terminated, and
+	//     at least one container has terminated in failure. The container
+	//     either exited with non-zero status or was terminated by the system.
+	//   - Unknown: For some reason the state of the NFS Server could not be
+	//     obtained, typically due to an error in communicating with the host of
+	//     the pod.
+	//
+	// TODO(sc): do we want to add more info, e.g. Condition, messages or
+	// StartTime?
+	Phase string `json:"phase"`
 }

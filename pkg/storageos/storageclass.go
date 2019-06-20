@@ -23,7 +23,8 @@ func (s *Deployment) createStorageClass() error {
 		// Add CSI creds secrets in parameters.
 		if CSIV1Supported(s.k8sVersion) {
 			// New CSI secret parameter keys were introduced in CSI v1.
-			sc.Parameters[csiV1FSType] = defaultFSType
+			// TODO: if fstype is set, it's used for nfs too
+			// sc.Parameters[csiV1FSType] = defaultFSType
 			if s.stos.Spec.CSI.EnableProvisionCreds {
 				sc.Parameters[csiV1ProvisionerSecretNameKey] = csiProvisionerSecretName
 				sc.Parameters[csiV1ProvisionerSecretNamespaceKey] = s.stos.Spec.GetResourceNS()
@@ -37,7 +38,8 @@ func (s *Deployment) createStorageClass() error {
 				sc.Parameters[csiV1NodePublishSecretNamespaceKey] = s.stos.Spec.GetResourceNS()
 			}
 		} else {
-			sc.Parameters[fsType] = defaultFSType
+			// TODO: if fstype is set, it's used for nfs too
+			// sc.Parameters[fsType] = defaultFSType
 			if s.stos.Spec.CSI.EnableProvisionCreds {
 				sc.Parameters[csiV0ProvisionerSecretNameKey] = csiProvisionerSecretName
 				sc.Parameters[csiV0ProvisionerSecretNamespaceKey] = s.stos.Spec.GetResourceNS()

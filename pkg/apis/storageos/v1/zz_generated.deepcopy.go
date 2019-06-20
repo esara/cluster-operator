@@ -296,6 +296,11 @@ func (in *NFSServerSpec) DeepCopyInto(out *NFSServerSpec) {
 			(*in)[i].DeepCopyInto(&(*out)[i])
 		}
 	}
+	if in.MountOptions != nil {
+		in, out := &in.MountOptions, &out.MountOptions
+		*out = make([]string, len(*in))
+		copy(*out, *in)
+	}
 	return
 }
 

@@ -26,16 +26,31 @@ func (d *Deployment) Deploy() error {
 		return err
 	}
 
-	svc, err := d.ensureService(DefaultNFSPort, DefaultRPCPort)
+	_, err = d.ensureService(DefaultNFSPort, DefaultRPCPort)
 	if err != nil {
+		return err
+	}
+	if err := d.createNFSConfigMap(); err != nil {
 		return err
 	}
 	if err := d.createStatefulSet(size, DefaultNFSPort, DefaultRPCPort); err != nil {
 		return err
 	}
-	if err := d.createPV(svc.Spec.ClusterIP, "/export", size); err != nil {
+	// if err := d.createPV(svc.Spec.ClusterIP, "/export", size); err != nil {
+	// 	return err
+	// }
+
+	status, err := d.getStatus()
+	if err != nil {
 		return err
 	}
+
+	log.Printf("Updating status: %v", status)
+
+	if err := d.updateStatus(status); err != nil {
+		return err
+	}
+
 	return nil
 }
 

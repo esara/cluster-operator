@@ -43,6 +43,7 @@ rules:
 - apiGroups:
   - ""
   resources:
+  - configmaps
   - events
   - namespaces
   - serviceaccounts
@@ -99,6 +100,7 @@ rules:
   - watch
   - list
   - get
+  - update
 # OpenShift specific rule.
 - apiGroups:
   - security.openshift.io

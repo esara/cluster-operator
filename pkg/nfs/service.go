@@ -11,7 +11,7 @@ import (
 
 func (d *Deployment) ensureService(nfsPort int, rpcPort int) (*corev1.Service, error) {
 
-	svc, err := d.getService()
+	svc, err := d.getService(d.nfsServer.Name, d.nfsServer.Namespace)
 	if err == nil {
 		return svc, err
 	}
@@ -19,7 +19,7 @@ func (d *Deployment) ensureService(nfsPort int, rpcPort int) (*corev1.Service, e
 	if err := d.createService(nfsPort, rpcPort); err != nil {
 		return nil, err
 	}
-	return d.getService()
+	return d.getService(d.nfsServer.Name, d.nfsServer.Namespace)
 }
 
 func (d *Deployment) createService(nfsPort int, rpcPort int) error {
@@ -52,16 +52,25 @@ func (d *Deployment) createService(nfsPort int, rpcPort int) error {
 	return d.createOrUpdateObject(svc)
 }
 
-func (d *Deployment) getService() (*corev1.Service, error) {
+func (d *Deployment) getService(name string, namespace string) (*corev1.Service, error) {
 
 	service := &corev1.Service{}
 
 	namespacedService := types.NamespacedName{
-		Namespace: d.nfsServer.Namespace,
-		Name:      d.nfsServer.Name,
+		Namespace: namespace,
+		Name:      name,
 	}
 	if err := d.client.Get(context.TODO(), namespacedService, service); err != nil {
 		return nil, err
 	}
 	return service, nil
+}
+
+func (d *Deployment) deleteService() error {
+
+	svc, err := d.getService(d.nfsServer.Name, d.nfsServer.Namespace)
+	if err != nil {
+		return err
+	}
+	return d.deleteObject(svc)
 }
