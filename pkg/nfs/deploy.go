@@ -1,8 +1,10 @@
 package nfs
 
 import (
+	"errors"
 	"log"
 
+	storageosv1 "github.com/storageos/cluster-operator/pkg/apis/storageos/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
@@ -49,6 +51,10 @@ func (d *Deployment) Deploy() error {
 
 	if err := d.updateStatus(status); err != nil {
 		return err
+	}
+
+	if status.Phase != storageosv1.PhaseRunning {
+		return errors.New("NFS server not ready")
 	}
 
 	return nil

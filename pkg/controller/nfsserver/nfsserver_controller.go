@@ -42,6 +42,7 @@ func newReconciler(mgr manager.Manager) reconcile.Reconciler {
 // addController adds a new NFSServer Controller to mgr with r as the
 // reconcile.Reconciler.
 func addController(mgr manager.Manager, r reconcile.Reconciler) error {
+
 	// Create a new controller
 	c, err := controller.New("nfsserver-controller", mgr, controller.Options{Reconciler: r})
 	if err != nil {
