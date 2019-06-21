@@ -9,20 +9,20 @@ import (
 	"k8s.io/apimachinery/pkg/util/intstr"
 )
 
-func (d *Deployment) ensureService(nfsPort int, rpcPort int) (*corev1.Service, error) {
+func (d *Deployment) ensureService(nfsPort int, rpcPort int, metricsPort int) (*corev1.Service, error) {
 
 	svc, err := d.getService(d.nfsServer.Name, d.nfsServer.Namespace)
 	if err == nil {
 		return svc, err
 	}
 
-	if err := d.createService(nfsPort, rpcPort); err != nil {
+	if err := d.createService(nfsPort, rpcPort, metricsPort); err != nil {
 		return nil, err
 	}
 	return d.getService(d.nfsServer.Name, d.nfsServer.Namespace)
 }
 
-func (d *Deployment) createService(nfsPort int, rpcPort int) error {
+func (d *Deployment) createService(nfsPort int, rpcPort int, metricsPort int) error {
 
 	svc := &corev1.Service{
 		ObjectMeta: metav1.ObjectMeta{
@@ -44,6 +44,11 @@ func (d *Deployment) createService(nfsPort int, rpcPort int) error {
 					Name:       "rpc",
 					Port:       int32(rpcPort),
 					TargetPort: intstr.FromInt(int(rpcPort)),
+				},
+				{
+					Name:       "metrics",
+					Port:       int32(metricsPort),
+					TargetPort: intstr.FromInt(int(metricsPort)),
 				},
 			},
 		},

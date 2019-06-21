@@ -2,7 +2,6 @@ package nfs
 
 import (
 	"context"
-	"log"
 
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
@@ -12,9 +11,8 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 )
 
-func (d *Deployment) createStatefulSet(size resource.Quantity, nfsPort int, rpcPort int) error {
+func (d *Deployment) createStatefulSet(size resource.Quantity, nfsPort int, rpcPort int, metricsPort int) error {
 
-	// ss := &appsv1.StatefulSet{}
 	replicas := int32(1)
 
 	ss := &appsv1.StatefulSet{
@@ -35,12 +33,12 @@ func (d *Deployment) createStatefulSet(size resource.Quantity, nfsPort int, rpcP
 			Selector: &metav1.LabelSelector{
 				MatchLabels: labelsForStatefulSet(d.nfsServer.Name),
 			},
-			Template:             d.createPodTemplateSpec(nfsPort, rpcPort),
+			Template:             d.createPodTemplateSpec(nfsPort, rpcPort, metricsPort),
 			VolumeClaimTemplates: d.createVolumeClaimTemplateSpecs(size),
 		},
 	}
 
-	log.Printf("ss: %#v", ss)
+	// log.Printf("ss: %#v", ss)
 
 	// podSpec := &sset.Spec.Template.Spec
 
@@ -84,7 +82,7 @@ func (d *Deployment) createVolumeClaimTemplateSpecs(size resource.Quantity) []co
 	}
 }
 
-func (d *Deployment) createPodTemplateSpec(nfsPort int, rpcPort int) corev1.PodTemplateSpec {
+func (d *Deployment) createPodTemplateSpec(nfsPort int, rpcPort int, metricsPort int) corev1.PodTemplateSpec {
 
 	return corev1.PodTemplateSpec{
 		ObjectMeta: metav1.ObjectMeta{
@@ -114,6 +112,10 @@ func (d *Deployment) createPodTemplateSpec(nfsPort int, rpcPort int) corev1.PodT
 						{
 							Name:          "rpc-port",
 							ContainerPort: int32(rpcPort),
+						},
+						{
+							Name:          "metrics-port",
+							ContainerPort: int32(metricsPort),
 						},
 					},
 					VolumeMounts: []corev1.VolumeMount{

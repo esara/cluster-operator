@@ -13,29 +13,30 @@ const (
 	appName         = "storageos"
 	statefulsetKind = "statefulset"
 
-	DefaultNFSPort = 2049
-	DefaultRPCPort = 111
+	DefaultNFSPort     = 2049
+	DefaultRPCPort     = 111
+	DefaultMetricsPort = 9587
 )
 
 // Deploy creates all the resources required to provision an NFS PV on top of
 // a StorageOS block device.
 func (d *Deployment) Deploy() error {
 
-	log.Printf("Deploy: %#v\n", d.nfsServer)
+	// log.Printf("Deploy: %#v\n", d.nfsServer)
 
 	size, err := resource.ParseQuantity(d.nfsServer.Spec.GetSize())
 	if err != nil {
 		return err
 	}
 
-	_, err = d.ensureService(DefaultNFSPort, DefaultRPCPort)
+	_, err = d.ensureService(DefaultNFSPort, DefaultRPCPort, DefaultMetricsPort)
 	if err != nil {
 		return err
 	}
 	if err := d.createNFSConfigMap(); err != nil {
 		return err
 	}
-	if err := d.createStatefulSet(size, DefaultNFSPort, DefaultRPCPort); err != nil {
+	if err := d.createStatefulSet(size, DefaultNFSPort, DefaultRPCPort, DefaultMetricsPort); err != nil {
 		return err
 	}
 	// if err := d.createPV(svc.Spec.ClusterIP, "/export", size); err != nil {
