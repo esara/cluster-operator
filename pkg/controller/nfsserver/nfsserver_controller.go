@@ -23,6 +23,8 @@ import (
 
 // var log = logf.Log.WithName("nfsserver")
 
+const finalizer = "finalizer.nfsserver.storageos.com"
+
 // AddController creates a new NFSServer Controller and adds it to the Manager.
 // The Manager will set fields on the Controller and Start it when the Manager
 // is Started.
@@ -114,7 +116,6 @@ func (r *ReconcileNFSServer) Reconcile(request reconcile.Request) (reconcile.Res
 	// reqLogger := log.WithValues("Request.Namespace", request.Namespace, "Request.Name", request.Name)
 	// reqLogger.Info("Reconciling NFSServer")
 	log.Printf("Request.Namespace: %s, Request.Name: %s", request.Namespace, request.Name)
-	log.Print("Reconciling NFSServer")
 
 	// Fetch the NFSServer instance
 	instance := &storageosv1.NFSServer{}
@@ -124,11 +125,36 @@ func (r *ReconcileNFSServer) Reconcile(request reconcile.Request) (reconcile.Res
 			// Request object not found, could have been deleted after reconcile
 			// request. Owned objects are automatically garbage collected.
 			// Return and don't requeue.
+			log.Print("Creating NFS Server")
 			return reconcile.Result{}, nil
 		}
 		// Error reading the object - requeue the request.
+		log.Print("Failed to retrieve NFS Server, will retry")
 		return reconcile.Result{}, err
 	}
+
+	// // Check if the Memcached instance is marked to be deleted, which is
+	// // indicated by the deletion timestamp being set.
+	// if instance.GetDeletionTimestamp() != nil {
+
+	// 	if contains(instance.GetFinalizers(), finalizer) {
+	// 		// Run finalization logic for memcachedFinalizer. If the
+	// 		// finalization logic fails, don't remove the finalizer so
+	// 		// that we can retry during the next reconciliation.
+	// 		if err := r. d.Delete()(reqLogger, instance); err != nil {
+	// 			return reconcile.Result{}, err
+	// 		}
+
+	// 		// Remove instanceFinalizer. Once all finalizers have been
+	// 		// removed, the object will be deleted.
+	// 		instance.SetFinalizers(remove(instance.GetFinalizers(), finalizer))
+	// 		err := r.client.Update(context.TODO(), instance)
+	// 		if err != nil {
+	// 			return reconcile.Result{}, err
+	// 		}
+	// 	}
+	// 	return reconcile.Result{}, nil
+	// }
 
 	// Set as the current cluster if there's no current cluster.
 	// r.SetCurrentClusterIfNone(instance)
@@ -168,31 +194,50 @@ func (r *ReconcileNFSServer) Reconcile(request reconcile.Request) (reconcile.Res
 		return reconcile.Result{}, err
 	}
 
+	log.Print("NFS Server reconcile done")
+
 	return reconcile.Result{}, nil
 }
 
 func (r *ReconcileNFSServer) reconcile(instance *storageosv1.NFSServer) error {
 
-	// Finalizers are set when an object should be deleted. Apply deploy only
-	// when finalizers is empty.
+	log.Printf("Reconciling NFS Server: %s/%s", instance.Namespace, instance.Name)
+
+	// Add our finalizer immediately so we can cleanup a partial deployment.  If
+	// this is not set, the CR can simply be deleted.
 	if len(instance.GetFinalizers()) == 0 {
 
-		log.Printf("reconciling NFS Server: %s/%s", instance.Namespace, instance.Name)
+		// Add our finalizer so that we control deletion.
+		if err := r.addFinalizer(instance); err != nil {
+			log.Printf("Failed to add finalizer to NFS Server")
+			return err
+		}
 
-		d := nfs.NewDeployment(r.client, instance, r.recorder, r.scheme)
+		// Return here, as the update to add the finalizer will trigger another
+		// reconcile.
+		return nil
+	}
+
+	d := nfs.NewDeployment(r.client, instance, r.recorder, r.scheme)
+
+	// If the CR has not been marked for deletion, ensure it is deployed.
+	if instance.GetDeletionTimestamp() == nil {
+		log.Printf("Ensuring the NFS server: %s/%s", instance.Namespace, instance.Name)
 
 		if err := d.Deploy(); err != nil {
 			// Ignore "Operation cannot be fulfilled" error. It happens when the
 			// actual state of object is different from what is known to the operator.
 			// Operator would resync and retry the failed operation on its own.
 			if !strings.HasPrefix(err.Error(), "Operation cannot be fulfilled") {
+				log.Printf("Failed to ensure the NFS server: %s/%s: %s", instance.Namespace, instance.Name, err.Error())
 				r.recorder.Event(instance, corev1.EventTypeWarning, "FailedCreation", err.Error())
 			}
 			return err
 		}
+
 	} else {
 
-		log.Printf("removing the NFS server: %s/%s", instance.Namespace, instance.Name)
+		log.Printf("Removing the NFS server: %s/%s", instance.Namespace, instance.Name)
 
 		// Delete the deployment once the finalizers are set on the cluster
 		// resource.
@@ -202,12 +247,10 @@ func (r *ReconcileNFSServer) reconcile(instance *storageosv1.NFSServer) error {
 		// 	return err
 		// }
 
-		d := nfs.NewDeployment(r.client, instance, r.recorder, r.scheme)
 		if err := d.Delete(); err != nil {
+			log.Printf("Failed to delete the NFS server: %s/%s: %s", instance.Namespace, instance.Name, err.Error())
 			return err
 		}
-
-		// r.ResetCurrentCluster()
 
 		// Reset finalizers and let k8s delete the object.
 		// When finalizers are set on an object, metadata.deletionTimestamp is
@@ -220,4 +263,34 @@ func (r *ReconcileNFSServer) reconcile(instance *storageosv1.NFSServer) error {
 
 	return nil
 
+}
+
+func (r *ReconcileNFSServer) addFinalizer(instance *storageosv1.NFSServer) error {
+
+	instance.SetFinalizers(append(instance.GetFinalizers(), finalizer))
+
+	// Update CR
+	err := r.client.Update(context.TODO(), instance)
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+func contains(list []string, s string) bool {
+	for _, v := range list {
+		if v == s {
+			return true
+		}
+	}
+	return false
+}
+
+func remove(list []string, s string) []string {
+	for i, v := range list {
+		if v == s {
+			list = append(list[:i], list[i+1:]...)
+		}
+	}
+	return list
 }

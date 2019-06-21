@@ -26,7 +26,7 @@ func createConfig(instance *storageosv1.NFSServer) string {
 
 	// Otherwise use export list
 	for _, export := range instance.Spec.Exports {
-		log.Printf("configuring export for: %s", export.PersistentVolumeClaim.ClaimName)
+		log.Printf("configuring export for: %v", export)
 		exports = append(exports, exportConfig(id, export.PersistentVolumeClaim.ClaimName, export.Server.AccessMode, export.Server.Squash))
 		id++
 	}
