@@ -2,7 +2,6 @@ package nfs
 
 import (
 	"errors"
-	"log"
 
 	storageosv1 "github.com/storageos/cluster-operator/pkg/apis/storageos/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
@@ -48,7 +47,7 @@ func (d *Deployment) Deploy() error {
 		return err
 	}
 
-	log.Printf("Updating status: %v", status)
+	d.logger.WithValues("status", status).V(4).Info("Updating status")
 
 	if err := d.updateStatus(status); err != nil {
 		return err

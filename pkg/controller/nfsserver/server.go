@@ -24,7 +24,7 @@ func NewServer(obj *storageosv1.NFSServer) *Server {
 // SetDeployment creates a new Server Deployment and sets it for the current
 // NFSServer.
 func (s *Server) SetDeployment(r *ReconcileNFSServer) {
-	s.deployment = nfs.NewDeployment(r.client, s.cached, r.recorder, r.scheme)
+	s.deployment = nfs.NewDeployment(r.client, s.cached, r.recorder, r.scheme, log)
 }
 
 // IsCurrentServer compares the server attributes to check if the given

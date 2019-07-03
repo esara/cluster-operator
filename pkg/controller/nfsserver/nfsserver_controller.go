@@ -2,7 +2,6 @@ package nfsserver
 
 import (
 	"context"
-	"log"
 	"strings"
 
 	storageosv1 "github.com/storageos/cluster-operator/pkg/apis/storageos/v1"
@@ -11,6 +10,7 @@ import (
 	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/client-go/tools/record"
+	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller"
 	"sigs.k8s.io/controller-runtime/pkg/handler"
@@ -21,7 +21,7 @@ import (
 	"github.com/storageos/cluster-operator/pkg/nfs"
 )
 
-// var log = logf.Log.WithName("nfsserver")
+var log = ctrl.Log.WithName("nfsserver")
 
 const finalizer = "finalizer.nfsserver.storageos.com"
 
@@ -99,23 +99,14 @@ type ReconcileNFSServer struct {
 	client   client.Client
 	scheme   *runtime.Scheme
 	recorder record.EventRecorder
-	// currentServer *Server
 }
 
-// // SetCurrentClusterIfNone checks if there's any existing current cluster and
-// // sets a new current cluster if it wasn't set before.
-// func (r *ReconcileNFSServer) SetCurrentClusterIfNone(cluster *storageosv1.StorageOSCluster) {
-// 	if r.currentCluster == nil {
-// 		r.SetCurrentCluster(cluster)
-// 	}
-// }
-
 // Reconcile reads that state of the cluster for a NFSServer object and makes
-// changes based on the state read and what is in the NFSServer.Spec
+// changes based on the state read and what is in the NFSServer.Spec.
 func (r *ReconcileNFSServer) Reconcile(request reconcile.Request) (reconcile.Result, error) {
-	// reqLogger := log.WithValues("Request.Namespace", request.Namespace, "Request.Name", request.Name)
-	// reqLogger.Info("Reconciling NFSServer")
-	log.Printf("Request.Namespace: %s, Request.Name: %s", request.Namespace, request.Name)
+
+	log := log.WithValues("Request.Namespace", request.Namespace, "Request.Name", request.Name)
+	// log.Info("Reconciling NFS Server")
 
 	// Fetch the NFSServer instance
 	instance := &storageosv1.NFSServer{}
@@ -125,11 +116,11 @@ func (r *ReconcileNFSServer) Reconcile(request reconcile.Request) (reconcile.Res
 			// Request object not found, could have been deleted after reconcile
 			// request. Owned objects are automatically garbage collected.
 			// Return and don't requeue.
-			log.Print("Creating NFS Server")
+			log.Info("Creating NFS Server")
 			return reconcile.Result{}, nil
 		}
 		// Error reading the object - requeue the request.
-		log.Print("Failed to retrieve NFS Server, will retry")
+		log.Error(err, "failed to retrieve NFS Server, will retry")
 		return reconcile.Result{}, err
 	}
 
@@ -190,18 +181,18 @@ func (r *ReconcileNFSServer) Reconcile(request reconcile.Request) (reconcile.Res
 	// log.Printf("instance: %#v\n", instance)
 
 	if err := r.reconcile(instance); err != nil {
-		log.Printf("Reconcile failed: %v", err)
+		log.Error(err, "Reconcile failed")
 		return reconcile.Result{}, err
 	}
 
-	log.Print("NFS Server reconcile done")
+	log.Info("NFS Server reconcile done")
 
 	return reconcile.Result{}, nil
 }
 
 func (r *ReconcileNFSServer) reconcile(instance *storageosv1.NFSServer) error {
 
-	log.Printf("Reconciling NFS Server: %s/%s", instance.Namespace, instance.Name)
+	log := log.WithValues("Request.Namespace", instance.Namespace, "Request.Name", instance.Name)
 
 	// Add our finalizer immediately so we can cleanup a partial deployment.  If
 	// this is not set, the CR can simply be deleted.
@@ -209,7 +200,6 @@ func (r *ReconcileNFSServer) reconcile(instance *storageosv1.NFSServer) error {
 
 		// Add our finalizer so that we control deletion.
 		if err := r.addFinalizer(instance); err != nil {
-			log.Printf("Failed to add finalizer to NFS Server")
 			return err
 		}
 
@@ -218,18 +208,15 @@ func (r *ReconcileNFSServer) reconcile(instance *storageosv1.NFSServer) error {
 		return nil
 	}
 
-	d := nfs.NewDeployment(r.client, instance, r.recorder, r.scheme)
+	d := nfs.NewDeployment(r.client, instance, r.recorder, r.scheme, log)
 
 	// If the CR has not been marked for deletion, ensure it is deployed.
 	if instance.GetDeletionTimestamp() == nil {
-		log.Printf("Ensuring the NFS server: %s/%s", instance.Namespace, instance.Name)
-
 		if err := d.Deploy(); err != nil {
 			// Ignore "Operation cannot be fulfilled" error. It happens when the
 			// actual state of object is different from what is known to the operator.
 			// Operator would resync and retry the failed operation on its own.
 			if !strings.HasPrefix(err.Error(), "Operation cannot be fulfilled") {
-				log.Printf("Failed to ensure the NFS server: %s/%s: %s", instance.Namespace, instance.Name, err.Error())
 				r.recorder.Event(instance, corev1.EventTypeWarning, "FailedCreation", err.Error())
 			}
 			return err
@@ -237,18 +224,13 @@ func (r *ReconcileNFSServer) reconcile(instance *storageosv1.NFSServer) error {
 
 	} else {
 
-		log.Printf("Removing the NFS server: %s/%s", instance.Namespace, instance.Name)
+		log.Info("Removing the NFS server")
 
 		// Delete the deployment once the finalizers are set on the cluster
 		// resource.
 		r.recorder.Event(instance, corev1.EventTypeNormal, "Terminating", "Deleting the NFS server.")
 
-		// if err := instance.DeleteDeployment(); err != nil {
-		// 	return err
-		// }
-
 		if err := d.Delete(); err != nil {
-			log.Printf("Failed to delete the NFS server: %s/%s: %s", instance.Namespace, instance.Name, err.Error())
 			return err
 		}
 

@@ -124,7 +124,7 @@ func (s *Deployment) Deploy() error {
 
 	if s.stos.Spec.CSI.Enable {
 
-		log.Printf("deploying CSI helpers as a %s", s.stos.Spec.GetCSIDeploymentStrategy())
+		log.WithValues("strategy", s.stos.Spec.GetCSIDeploymentStrategy()).Info("Deploying CSI helpers")
 
 		// Create CSI exclusive resources.
 		if err := s.createCSISecrets(); err != nil {
@@ -164,7 +164,7 @@ func (s *Deployment) Deploy() error {
 		}
 
 		if err := s.createCSIHelper(); err != nil {
-			log.Printf("failed to deploy CSI helpers: %v", err)
+			log.Error(err, "failed to deploy CSI helpers")
 			return err
 		}
 	}
