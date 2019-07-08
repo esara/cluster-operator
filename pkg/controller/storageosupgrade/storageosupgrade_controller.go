@@ -15,19 +15,19 @@ import (
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/tools/record"
-	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 	"sigs.k8s.io/controller-runtime/pkg/handler"
 	"sigs.k8s.io/controller-runtime/pkg/manager"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
+	logf "sigs.k8s.io/controller-runtime/pkg/runtime/log"
 	"sigs.k8s.io/controller-runtime/pkg/source"
 
 	storageosapi "github.com/storageos/go-api"
 )
 
-var log = ctrl.Log.WithName("upgrade")
+var log = logf.Log.WithName("storageos.upgrade")
 
 var (
 	// operatorImage is the image name of controller-operator. This is needed
@@ -281,7 +281,7 @@ func (r *ReconcileStorageOSUpgrade) Reconcile(request reconcile.Request) (reconc
 	}
 	err = r.client.Get(context.TODO(), nsdName, r.imagePuller)
 	if err != nil {
-		log.Error(err, "error fetching image puller status")
+		log.Info("Failed to fetch image puller status", "error", err)
 	}
 	// Re-queue if the image pull didn't complete.
 	if !r.imagePuller.Status.Completed {

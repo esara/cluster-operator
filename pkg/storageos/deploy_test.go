@@ -331,6 +331,9 @@ func TestCreateDaemonSet(t *testing.T) {
 		wantEnableCSI        bool
 		wantSharedDir        string
 		wantDisableTelemetry bool
+		wantDisableFencing   bool
+		wantDisableTCMU      bool
+		wantForceTCMU        bool
 		wantTLSEtcd          bool
 		wantK8sDistro        string
 	}{
@@ -365,6 +368,27 @@ func TestCreateDaemonSet(t *testing.T) {
 				DisableTelemetry: true,
 			},
 			wantDisableTelemetry: true,
+		},
+		{
+			name: "disable fencing",
+			spec: api.StorageOSClusterSpec{
+				DisableFencing: true,
+			},
+			wantDisableFencing: true,
+		},
+		{
+			name: "disable tcmu",
+			spec: api.StorageOSClusterSpec{
+				DisableTCMU: true,
+			},
+			wantDisableTCMU: true,
+		},
+		{
+			name: "force tcmu",
+			spec: api.StorageOSClusterSpec{
+				ForceTCMU: true,
+			},
+			wantForceTCMU: true,
 		},
 		{
 			name: "etcd TLS",
@@ -455,6 +479,57 @@ func TestCreateDaemonSet(t *testing.T) {
 		// Telemetry must be set.
 		if !telemetryEnvVarFound {
 			t.Errorf("disableTelemetry env var not set, expected to be set")
+		}
+
+		// Check fencing option.
+		fencingEnvVarFound := false
+		wantDisableFencing := strconv.FormatBool(tc.wantDisableFencing)
+		for _, env := range createdDaemonset.Spec.Template.Spec.Containers[0].Env {
+			if env.Name == disableFencingEnvVar {
+				fencingEnvVarFound = true
+				if env.Value != wantDisableFencing {
+					t.Errorf("unexpected disableFencing value:\n\t(WNT) %s\n\t(GOT) %s", wantDisableFencing, env.Value)
+				}
+			}
+		}
+
+		// Fencing must be set.
+		if !fencingEnvVarFound {
+			t.Errorf("disableFencing env var not set, expected to be set")
+		}
+
+		// Check disable tcmu option.
+		disableTCMUEnvVarFound := false
+		wantDisableTCMU := strconv.FormatBool(tc.wantDisableTCMU)
+		for _, env := range createdDaemonset.Spec.Template.Spec.Containers[0].Env {
+			if env.Name == disableTCMUEnvVar {
+				disableTCMUEnvVarFound = true
+				if env.Value != wantDisableTCMU {
+					t.Errorf("unexpected disableTCMU value:\n\t(WNT) %s\n\t(GOT) %s", wantDisableTCMU, env.Value)
+				}
+			}
+		}
+
+		// Disable TCMU must be set.
+		if !disableTCMUEnvVarFound {
+			t.Errorf("disableTCMU env var not set, expected to be set")
+		}
+
+		// Check force tcmu option.
+		ForceTCMUEnvVarFound := false
+		wantForceTCMU := strconv.FormatBool(tc.wantForceTCMU)
+		for _, env := range createdDaemonset.Spec.Template.Spec.Containers[0].Env {
+			if env.Name == forceTCMUEnvVar {
+				ForceTCMUEnvVarFound = true
+				if env.Value != wantForceTCMU {
+					t.Errorf("unexpected forceTCMU value:\n\t(WNT) %s\n\t(GOT) %s", wantForceTCMU, env.Value)
+				}
+			}
+		}
+
+		// Force TCMU must be set.
+		if !ForceTCMUEnvVarFound {
+			t.Errorf("forceTCMU env var not set, expected to be set")
 		}
 
 		if tc.wantTLSEtcd {
@@ -1034,11 +1109,11 @@ func TestDeployNodeAffinity(t *testing.T) {
 		csiDeploymentStrategy string
 	}{
 		{
-			name: "csi helper StatefulSet",
+			name:                  "csi helper StatefulSet",
 			csiDeploymentStrategy: "statefulset",
 		},
 		{
-			name: "csi helper Deployment",
+			name:                  "csi helper Deployment",
 			csiDeploymentStrategy: "deployment",
 		},
 	}
@@ -1615,4 +1690,92 @@ func TestDeployPodPriorityClass(t *testing.T) {
 		})
 	}
 
+}
+
+func TestDeploySchedulerExtender(t *testing.T) {
+	stosCluster := &api.StorageOSCluster{
+		TypeMeta: metav1.TypeMeta{
+			APIVersion: gvk.GroupVersion().String(),
+			Kind:       gvk.Kind,
+		},
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "teststos",
+			Namespace: "default",
+		},
+		Spec: api.StorageOSClusterSpec{
+			CSI: api.StorageOSClusterCSI{
+				Enable: true,
+			},
+		},
+	}
+
+	c := fake.NewFakeClientWithScheme(testScheme)
+	if err := c.Create(context.Background(), stosCluster); err != nil {
+		t.Fatalf("failed to create storageoscluster object: %v", err)
+	}
+
+	deploy := NewDeployment(c, stosCluster, nil, testScheme, "1.15.0", false)
+	err := deploy.Deploy()
+	if err != nil {
+		t.Error("deployment failed:", err)
+	}
+
+	// Get scheduler policy configmap and check the data.
+	policycm := &corev1.ConfigMap{}
+	policyNSName := types.NamespacedName{
+		Name:      policyConfigMapName,
+		Namespace: defaultNS,
+	}
+
+	if err := c.Get(context.Background(), policyNSName, policycm); err != nil {
+		t.Fatal("failed to get the created scheduler policy configmap", err)
+	}
+
+	// Check if the expected key and value exists.
+	if val, exists := policycm.Data[policyConfigKey]; exists {
+		if len(val) == 0 {
+			t.Errorf("%q is empty, expected not to be empty", policyConfigKey)
+		}
+	} else {
+		t.Errorf("expected %q to be in scheduler policy configmap data", policyConfigKey)
+	}
+
+	// Get scheduler configuration configmap and check the data.
+	schedConfigcm := &corev1.ConfigMap{}
+	schedConfigNSName := types.NamespacedName{
+		Name:      schedulerConfigConfigMapName,
+		Namespace: defaultNS,
+	}
+
+	if err := c.Get(context.Background(), schedConfigNSName, schedConfigcm); err != nil {
+		t.Fatal("failed to get the created scheduler configuration configmap", err)
+	}
+
+	// Check if the expected key and value exists.
+	if val, exists := schedConfigcm.Data[schedulerConfigKey]; exists {
+		if len(val) == 0 {
+			t.Errorf("%q is empty, expected not to be empty", schedulerConfigKey)
+		}
+	} else {
+		t.Errorf("expected %q to be in scheduler configuration configmap data", schedulerConfigKey)
+	}
+
+	// Check the attributes of the scheduler deployment.
+	schedDeployment := &appsv1.Deployment{}
+	schedDeploymentNSName := types.NamespacedName{
+		Name:      schedulerExtenderName,
+		Namespace: defaultNS,
+	}
+
+	if err := c.Get(context.Background(), schedDeploymentNSName, schedDeployment); err != nil {
+		t.Fatal("failed to get the created scheduler deployment", err)
+	}
+
+	if *schedDeployment.Spec.Replicas != schedulerReplicas {
+		t.Fatalf("unexpected number of replicas:\n\t(WNT) %d\n\t(GOT) %d", *schedDeployment.Spec.Replicas, schedulerReplicas)
+	}
+
+	if schedDeployment.Spec.Template.Spec.ServiceAccountName != SchedulerSA {
+		t.Fatalf("unexpected service account name:\n\t(WNT) %q\n\t(GOT) %q", schedDeployment.Spec.Template.Spec.ServiceAccountName, SchedulerSA)
+	}
 }

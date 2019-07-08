@@ -28,8 +28,8 @@ const (
 
 	DefaultIngressHostname = "storageos.local"
 
-	DefaultNodeContainerImage                 = "storageos/node:1.2.1"
-	DefaultInitContainerImage                 = "storageos/init:0.1"
+	DefaultNodeContainerImage                 = "storageos/node:1.3.0"
+	DefaultInitContainerImage                 = "storageos/init:0.2"
 	CSIv1ClusterDriverRegistrarContainerImage = "quay.io/k8scsi/csi-cluster-driver-registrar:v1.0.1"
 	CSIv1NodeDriverRegistrarContainerImage    = "quay.io/k8scsi/csi-node-driver-registrar:v1.0.1"
 	CSIv1ExternalProvisionerContainerImage    = "storageos/csi-provisioner:v1.0.1"
@@ -38,6 +38,8 @@ const (
 	CSIv0DriverRegistrarContainerImage        = "quay.io/k8scsi/driver-registrar:v0.4.2"
 	CSIv0ExternalProvisionerContainerImage    = "storageos/csi-provisioner:v0.4.2"
 	CSIv0ExternalAttacherContainerImage       = "quay.io/k8scsi/csi-attacher:v0.4.2"
+
+	DefaultHyperkubeContainerRegistry = "gcr.io/google_containers/hyperkube"
 
 	DefaultPluginRegistrationPath = "/var/lib/kubelet/plugins_registry"
 	OldPluginRegistrationPath     = "/var/lib/kubelet/plugins"
@@ -153,6 +155,22 @@ type StorageOSClusterSpec struct {
 	// Disable Telemetry.
 	DisableTelemetry bool `json:"disableTelemetry"`
 
+	// Disable TCMU can be set to true to disable the TCMU storage driver.  This
+	// is required when there are multiple storage systems running on the same
+	// node and you wish to avoid conflicts.  Only one TCMU-based storage system
+	// can run on a node at a time.
+	//
+	// Disabling TCMU will degrade performance.
+	DisableTCMU bool `json:"disableTCMU"`
+
+	// Force TCMU can be set to true to ensure that TCMU is enabled or
+	// cause StorageOS to abort startup.
+	//
+	// At startup, StorageOS will automatically fallback to non-TCMU mode if
+	// another TCMU-based storage system is running on the node.  Since non-TCMU
+	// will degrade performance, this may not always be desired.
+	ForceTCMU bool `json:"forceTCMU"`
+
 	// TLSEtcdSecretRefName is the name of the secret object that contains the
 	// etcd TLS certs. This secret is shared with etcd, therefore it's not part
 	// of the main storageos secret.
@@ -172,6 +190,9 @@ type StorageOSClusterSpec struct {
 	// distribution information will also be included in the product telemetry
 	// (if enabled), to help focus development efforts.
 	K8sDistro string `json:"k8sDistro"`
+
+	// Disable StorageOS scheduler extender.
+	DisableScheduler bool `json:"disableScheduler"`
 }
 
 // StorageOSClusterStatus defines the observed state of StorageOSCluster
@@ -288,6 +309,17 @@ func (s StorageOSClusterSpec) GetCSILivenessProbeImage() string {
 		return s.Images.CSILivenessProbeContainer
 	}
 	return CSIv1LivenessProbeContainerImage
+}
+
+// GetHyperkubeImage returns hyperkube container image for a given k8s version.
+// If an image is set explicitly in the cluster configuration, that image is
+// returned.
+func (s StorageOSClusterSpec) GetHyperkubeImage(k8sVersion string) string {
+	if s.Images.HyperkubeContainer != "" {
+		return s.Images.HyperkubeContainer
+	}
+	// Add version prefix "v" in the tag.
+	return fmt.Sprintf("%s:v%s", DefaultHyperkubeContainerRegistry, k8sVersion)
 }
 
 // GetServiceName returns the service name.
@@ -443,6 +475,7 @@ type ContainerImages struct {
 	CSIExternalProvisionerContainer    string `json:"csiExternalProvisionerContainer"`
 	CSIExternalAttacherContainer       string `json:"csiExternalAttacherContainer"`
 	CSILivenessProbeContainer          string `json:"csiLivenessProbeContainer"`
+	HyperkubeContainer                 string `json:"hyperkubeContainer"`
 }
 
 // StorageOSClusterCSI contains CSI configurations.

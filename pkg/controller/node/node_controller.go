@@ -11,20 +11,21 @@ import (
 	kerrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
-	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller"
 	"sigs.k8s.io/controller-runtime/pkg/handler"
 	"sigs.k8s.io/controller-runtime/pkg/manager"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
+	logf "sigs.k8s.io/controller-runtime/pkg/runtime/log"
 	"sigs.k8s.io/controller-runtime/pkg/source"
 
 	storageosv1 "github.com/storageos/cluster-operator/pkg/apis/storageos/v1"
 	storageosapi "github.com/storageos/go-api"
+	storageoserror "github.com/storageos/go-api/serror"
 	storageostypes "github.com/storageos/go-api/types"
 )
 
-var log = ctrl.Log.WithName("node")
+var log = logf.Log.WithName("storageos.node")
 
 // Node controller errors.
 var (
@@ -100,7 +101,7 @@ func (r *ReconcileNode) Reconcile(request reconcile.Request) (reconcile.Result, 
 			return reconcile.Result{}, nil
 		}
 		// Requeue the request in order to retry getting the cluster.
-		log.Error(err, "failed to find current cluster")
+		log.Error(err, "Failed to find current cluster")
 		return reconcileResult, err
 	}
 
@@ -113,16 +114,21 @@ func (r *ReconcileNode) Reconcile(request reconcile.Request) (reconcile.Result, 
 		r.stosClient.clusterUID != cluster.GetUID() {
 
 		if err := r.setClientForCluster(cluster); err != nil {
-			log.Error(err, "failed to configure api client")
+			log.Error(err, "Failed to configure api client")
 			return reconcileResult, err
 		}
 	}
 
 	// Sync labels to StorageOS node object.
 	if err = r.syncLabels(instance.Name, instance.Labels); err != nil {
-		log.Error(err, "failed to sync labels, api may not be ready")
+		if storageoserror.ErrorKind(err) == storageoserror.APIUncontactable {
+			log.V(4).Info("Waiting for StorageOS API to become ready")
+			return reconcileResult, nil
+		}
+
 		// Error syncing labels - requeue the request.
-		return reconcileResult, err
+		log.V(4).Info("Failed to sync node labels", "error", err)
+		return reconcileResult, nil
 	}
 
 	return reconcileResult, nil

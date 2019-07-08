@@ -54,6 +54,12 @@ data:
                     type: boolean
                   disableTelemetry:
                     type: boolean
+                  disableTCMU:
+                    type: boolean
+                  forceTCMU:
+                    type: boolean
+                  disableScheduler:
+                    type: boolean
                   images:
                     properties:
                       nodeContainer:
@@ -226,7 +232,7 @@ data:
           description: Cloud-native, persistent storage for containers.
           containerImage: storageos/cluster-operator:test
           repository: https://github.com/storageos/cluster-operator
-          createdAt: 2019-05-15T08:00:00Z
+          createdAt: 2019-07-08T12:01:29Z
           support: StorageOS, Inc
           certified: "false"
           alm-examples: |-
@@ -415,6 +421,7 @@ data:
                 - statefulsets
                 - daemonsets
                 - deployments
+                - replicasets
                 verbs:
                 - "*"
               - apiGroups:
@@ -426,6 +433,7 @@ data:
                 - watch
                 - get
                 - update
+                - create
               - apiGroups:
                 - ""
                 resources:
@@ -437,6 +445,7 @@ data:
                 - update
                 - patch
                 - delete
+                - create
               - apiGroups:
                 - ""
                 resources:
@@ -447,6 +456,10 @@ data:
                 - services
                 - persistentvolumeclaims
                 - persistentvolumes
+                - configmaps
+                - replicationcontrollers
+                - pods/binding
+                - endpoints
                 verbs:
                 - create
                 - patch
@@ -492,6 +505,13 @@ data:
                 verbs:
                 - create
                 - delete
+              - apiGroups:
+                - policy
+                resources:
+                - poddisruptionbudgets
+                verbs:
+                - list
+                - watch
               - apiGroups:
                 - security.openshift.io
                 resources:
@@ -619,7 +639,26 @@ data:
                 will not be added to the StorageOS role.
               displayName: Disable Fencing
               path: disableFencing
-            - description: When enabled, the Operaaor will not perform any actions on
+            - description: Disable TCMU can be set to true to disable the TCMU storage
+                driver.  This is required when there are multiple storage systems
+                running on the same node and you wish to avoid conflicts.  Only one
+                TCMU-based storage system can run on a node at a time.  Disabling TCMU
+                will degrade performance.
+              displayName: Disable TCMU
+              path: disableTCMU
+            - description: Force TCMU can be set to true to ensure that TCMU is enabled or
+                cause StorageOS to abort startup.  At startup, StorageOS will
+                automatically fallback to non-TCMU mode if another TCMU-based storage
+                system is running on the node.  Since non-TCMU has performance
+                drawbacks, this may not always be desired.
+              displayName: Force TCMU
+              path: forceTCMU
+            - description: Disable StorageOS scheduler deployment. StorageOS scheduler
+                helps improve the scheduling decision of a pod, considering the location
+                of volumes and their replicas.
+              displayName: Disable Scheduler
+              path: disableScheduler
+            - description: When enabled, the Operator will not perform any actions on
                 the cluster.
               displayName: Pause Operator
               path: pause

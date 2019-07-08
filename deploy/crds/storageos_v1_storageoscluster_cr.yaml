@@ -18,6 +18,7 @@ spec:
   #   csiExternalProvisionerContainer:
   #   csiExternalAttacherContainer:
   #   csiLivenessProbeContainer:
+  #   hyperkubeContainer:
   csi:
     enable: true
   #   endpoint: /var/lib/kubelet/device-plugins/
@@ -73,7 +74,9 @@ spec:
   #   requests:
   #     memory: "702Mi"
   # disableFencing: false
-
+  # disableTCMU: false
+  # forceTCMU: false
+  # disableScheduler: false
 
 ---
 apiVersion: v1

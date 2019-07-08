@@ -16,16 +16,16 @@ import (
 	"k8s.io/apimachinery/pkg/selection"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/tools/record"
-	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller"
 	"sigs.k8s.io/controller-runtime/pkg/handler"
 	"sigs.k8s.io/controller-runtime/pkg/manager"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
+	logf "sigs.k8s.io/controller-runtime/pkg/runtime/log"
 	"sigs.k8s.io/controller-runtime/pkg/source"
 )
 
-var log = ctrl.Log.WithName("cluster")
+var log = logf.Log.WithName("storageos.cluster")
 
 // Add creates a new StorageOSCluster Controller and adds it to the Manager. The Manager will set fields on the Controller
 // and Start it when the Manager is Started.
@@ -40,7 +40,7 @@ func Add(mgr manager.Manager) error {
 
 	log.WithValues("k8s", version).Info("Adding cluster controller")
 
-	return add(mgr, newReconciler(mgr, strings.TrimLeft(version, "v")))
+	return add(mgr, newReconciler(mgr, version))
 }
 
 // newReconciler returns a new reconcile.Reconciler
@@ -156,7 +156,8 @@ func (r *ReconcileStorageOSCluster) Reconcile(request reconcile.Request) (reconc
 	}
 
 	if err := r.reconcile(instance); err != nil {
-		return reconcileResult, err
+		log.V(4).Info("Reconcile failed", "error", err)
+		return reconcileResult, nil
 	}
 
 	return reconcileResult, nil
@@ -190,6 +191,10 @@ func (r *ReconcileStorageOSCluster) reconcile(m *storageosv1.StorageOSCluster) e
 	m.Spec.ResourceNS = m.Spec.GetResourceNS()
 	m.Spec.Images.NodeContainer = m.Spec.GetNodeContainerImage()
 	m.Spec.Images.InitContainer = m.Spec.GetInitContainerImage()
+
+	if !m.Spec.DisableScheduler {
+		m.Spec.Images.HyperkubeContainer = m.Spec.GetHyperkubeImage(r.k8sVersion)
+	}
 
 	if m.Spec.CSI.Enable {
 		m.Spec.Images.CSINodeDriverRegistrarContainer = m.Spec.GetCSINodeDriverRegistrarImage(storageos.CSIV1Supported(r.k8sVersion))
