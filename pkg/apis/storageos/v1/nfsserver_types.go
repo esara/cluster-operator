@@ -25,9 +25,6 @@ const (
 	// TODO: change to an image we maintain.
 	DefaultNFSContainerImage = "soegarots/nfs-ganesha"
 
-	// DefaultSize is used when no Size is
-	DefaultSize = "5Gi"
-
 	PhasePending = "Pending"
 	PhaseRunning = "Running"
 	// PhaseSucceeded = "Succeeded"
@@ -58,13 +55,17 @@ type NFSServerList struct {
 
 // NFSServerSpec defines the desired state of NFSServer
 type NFSServerSpec struct {
-	Size string
 
 	// NFSContainer is the container image to use for the NFS server.
+	// +optional
 	NFSContainer string `json:"nfsContainer"`
 
 	// INSERT ADDITIONAL SPEC FIELDS - desired state of cluster
 	// Important: Run "operator-sdk generate k8s" to regenerate code after modifying this file
+
+	// Resources represents the minimum resources required
+	// +optional
+	Resources v1.ResourceRequirements
 
 	// The annotations-related configuration to add/set on each Pod related object.
 	Annotations map[string]string `json:"annotations,omitempty"`
@@ -82,14 +83,6 @@ type NFSServerSpec struct {
 	// PV mount options. Not validated - mount of the PVs will simply fail if
 	// one is invalid.
 	MountOptions []string
-}
-
-// GetSize returns the requested volume size.
-func (s NFSServerSpec) GetSize() string {
-	if s.Size != "" {
-		return s.Size
-	}
-	return DefaultSize
 }
 
 // GetContainerImage returns the NFS server container image.

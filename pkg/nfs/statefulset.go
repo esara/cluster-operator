@@ -11,7 +11,7 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 )
 
-func (d *Deployment) createStatefulSet(size resource.Quantity, nfsPort int, rpcPort int, metricsPort int) error {
+func (d *Deployment) createStatefulSet(size *resource.Quantity, nfsPort int, rpcPort int, metricsPort int) error {
 
 	replicas := int32(1)
 
@@ -53,33 +53,34 @@ func (d *Deployment) createStatefulSet(size resource.Quantity, nfsPort int, rpcP
 	return d.createOrUpdateObject(ss)
 }
 
-func (d *Deployment) createVolumeClaimTemplateSpecs(size resource.Quantity) []corev1.PersistentVolumeClaim {
+func (d *Deployment) createVolumeClaimTemplateSpecs(size *resource.Quantity) []corev1.PersistentVolumeClaim {
 
 	// TODO: constant/lookup
 	scName := "fast"
 
-	return []corev1.PersistentVolumeClaim{
-		{
-			ObjectMeta: metav1.ObjectMeta{
-				// Name:      d.nfsServer.Name,
-				Name:      "nfs-data",
-				Namespace: d.nfsServer.Namespace,
-				Labels:    labelsForStatefulSet(d.nfsServer.Name),
-				Annotations: map[string]string{
-					"volume.beta.kubernetes.io/storage-class": "fast",
-				},
-			},
-			Spec: corev1.PersistentVolumeClaimSpec{
-				AccessModes:      []corev1.PersistentVolumeAccessMode{corev1.ReadWriteOnce},
-				StorageClassName: &scName,
-				Resources: corev1.ResourceRequirements{
-					Requests: corev1.ResourceList{
-						corev1.ResourceName(corev1.ResourceStorage): size,
-					},
-				},
+	claim := corev1.PersistentVolumeClaim{
+		ObjectMeta: metav1.ObjectMeta{
+			// Name:      d.nfsServer.Name,
+			Name:      "nfs-data",
+			Namespace: d.nfsServer.Namespace,
+			Labels:    labelsForStatefulSet(d.nfsServer.Name),
+		},
+		Spec: corev1.PersistentVolumeClaimSpec{
+			AccessModes:      []corev1.PersistentVolumeAccessMode{corev1.ReadWriteOnce},
+			StorageClassName: &scName,
+			Resources: corev1.ResourceRequirements{
+				Requests: corev1.ResourceList{},
 			},
 		},
 	}
+
+	if size != nil {
+		claim.Spec.Resources.Requests = corev1.ResourceList{
+			corev1.ResourceName(corev1.ResourceStorage): *size,
+		}
+	}
+
+	return []corev1.PersistentVolumeClaim{claim}
 }
 
 func (d *Deployment) createPodTemplateSpec(nfsPort int, rpcPort int, metricsPort int) corev1.PodTemplateSpec {

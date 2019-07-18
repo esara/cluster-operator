@@ -4,6 +4,7 @@ import (
 	"errors"
 
 	storageosv1 "github.com/storageos/cluster-operator/pkg/apis/storageos/v1"
+	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
@@ -21,14 +22,14 @@ const (
 // a StorageOS block device.
 func (d *Deployment) Deploy() error {
 
-	// log.Printf("Deploy: %#v\n", d.nfsServer)
-
-	size, err := resource.ParseQuantity(d.nfsServer.Spec.GetSize())
-	if err != nil {
-		return err
+	// Only set size if given, nil otherwise.  Will use block volume default.
+	var size *resource.Quantity
+	requestedCapacity, ok := d.nfsServer.Spec.Resources.Requests[v1.ResourceName(v1.ResourceStorage)]
+	if ok {
+		size = &requestedCapacity
 	}
 
-	_, err = d.ensureService(DefaultNFSPort, DefaultRPCPort, DefaultMetricsPort)
+	_, err := d.ensureService(DefaultNFSPort, DefaultRPCPort, DefaultMetricsPort)
 	if err != nil {
 		return err
 	}
