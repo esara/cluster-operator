@@ -23,7 +23,7 @@ import (
 const (
 	// DefaultNFSContainerImage is the name of the Ganesha container to run.
 	// TODO: change to an image we maintain.
-	DefaultNFSContainerImage = "storageos/nfs-ganesha"
+	DefaultNFSContainerImage = "soegarots/nfs-ganesha"
 
 	// DefaultSize is used when no Size is
 	DefaultSize = "5Gi"
