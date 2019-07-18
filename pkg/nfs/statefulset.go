@@ -16,15 +16,10 @@ func (d *Deployment) createStatefulSet(size *resource.Quantity, nfsPort int, rpc
 	replicas := int32(1)
 
 	ss := &appsv1.StatefulSet{
-		// TODO - TypeMeta not needed?
-		TypeMeta: metav1.TypeMeta{
-			APIVersion: "apps/v1",
-			Kind:       "StatefulSet",
-		},
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      d.nfsServer.Name,
-			Namespace: d.nfsServer.Namespace,
-			// Labels:          labelsForStatefulSet(d.nfsServer.Name),
+			Name:            d.nfsServer.Name,
+			Namespace:       d.nfsServer.Namespace,
+			Labels:          d.nfsServer.Labels,
 			OwnerReferences: d.nfsServer.ObjectMeta.OwnerReferences,
 		},
 		Spec: appsv1.StatefulSetSpec{
@@ -33,37 +28,24 @@ func (d *Deployment) createStatefulSet(size *resource.Quantity, nfsPort int, rpc
 			Selector: &metav1.LabelSelector{
 				MatchLabels: labelsForStatefulSet(d.nfsServer.Name),
 			},
-			Template:             d.createPodTemplateSpec(nfsPort, rpcPort, metricsPort),
-			VolumeClaimTemplates: d.createVolumeClaimTemplateSpecs(size),
+			Template:             d.createPodTemplateSpec(nfsPort, rpcPort, metricsPort, d.nfsServer.Labels),
+			VolumeClaimTemplates: d.createVolumeClaimTemplateSpecs(size, d.nfsServer.Labels),
 		},
 	}
-
-	// log.Printf("ss: %#v", ss)
-
-	// podSpec := &sset.Spec.Template.Spec
-
-	// s.addPodPriorityClass(podSpec)
-
-	// s.addNodeAffinity(podSpec)
-
-	// if err := s.addTolerations(podSpec); err != nil {
-	// 	return err
-	// }
 
 	return d.createOrUpdateObject(ss)
 }
 
-func (d *Deployment) createVolumeClaimTemplateSpecs(size *resource.Quantity) []corev1.PersistentVolumeClaim {
+func (d *Deployment) createVolumeClaimTemplateSpecs(size *resource.Quantity, labels map[string]string) []corev1.PersistentVolumeClaim {
 
 	// TODO: constant/lookup
 	scName := "fast"
 
 	claim := corev1.PersistentVolumeClaim{
 		ObjectMeta: metav1.ObjectMeta{
-			// Name:      d.nfsServer.Name,
 			Name:      "nfs-data",
 			Namespace: d.nfsServer.Namespace,
-			Labels:    labelsForStatefulSet(d.nfsServer.Name),
+			Labels:    labels,
 		},
 		Spec: corev1.PersistentVolumeClaimSpec{
 			AccessModes:      []corev1.PersistentVolumeAccessMode{corev1.ReadWriteOnce},
@@ -83,21 +65,18 @@ func (d *Deployment) createVolumeClaimTemplateSpecs(size *resource.Quantity) []c
 	return []corev1.PersistentVolumeClaim{claim}
 }
 
-func (d *Deployment) createPodTemplateSpec(nfsPort int, rpcPort int, metricsPort int) corev1.PodTemplateSpec {
+func (d *Deployment) createPodTemplateSpec(nfsPort int, rpcPort int, metricsPort int, labels map[string]string) corev1.PodTemplateSpec {
 
 	return corev1.PodTemplateSpec{
 		ObjectMeta: metav1.ObjectMeta{
-			// Name:      d.nfsServer.Name,
-			// Namespace: d.nfsServer.Namespace,
 			Labels: labelsForStatefulSet(d.nfsServer.Name),
 		},
 		Spec: corev1.PodSpec{
 			Containers: []corev1.Container{
 				{
 					ImagePullPolicy: "IfNotPresent",
-					Name:            "ganesha",
-					// Name:            d.nfsServer.Name,
-					Image: d.nfsServer.Spec.GetContainerImage(),
+					Name:            "nfsd",
+					Image:           d.nfsServer.Spec.GetContainerImage(),
 					// Args: []string{"nfs", "server", "--ganeshaConfigPath=" + NFSConfigMapPath + "/" + nfsServer.name},
 					Env: []corev1.EnvVar{
 						{

@@ -62,7 +62,7 @@ func (d *Deployment) Deploy() error {
 }
 
 func labelsForStatefulSet(name string) map[string]string {
-	return map[string]string{"app": appName, "storageos_cr": name}
+	return map[string]string{"app": appName, "nfsserver": name}
 }
 
 // func labelsForApp(nfsServer *storageosv1.NFSServer) map[string]string {
