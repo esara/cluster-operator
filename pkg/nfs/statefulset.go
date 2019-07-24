@@ -26,7 +26,7 @@ func (d *Deployment) createStatefulSet(size *resource.Quantity, nfsPort int, rpc
 			ServiceName: d.nfsServer.Name,
 			Replicas:    &replicas,
 			Selector: &metav1.LabelSelector{
-				MatchLabels: labelsForStatefulSet(d.nfsServer.Name),
+				MatchLabels: labelsForStatefulSet(d.nfsServer.Name, d.nfsServer.Labels),
 			},
 			Template:             d.createPodTemplateSpec(nfsPort, rpcPort, metricsPort, d.nfsServer.Labels),
 			VolumeClaimTemplates: d.createVolumeClaimTemplateSpecs(size, d.nfsServer.Labels),
@@ -69,7 +69,7 @@ func (d *Deployment) createPodTemplateSpec(nfsPort int, rpcPort int, metricsPort
 
 	return corev1.PodTemplateSpec{
 		ObjectMeta: metav1.ObjectMeta{
-			Labels: labelsForStatefulSet(d.nfsServer.Name),
+			Labels: labelsForStatefulSet(d.nfsServer.Name, labels),
 		},
 		Spec: corev1.PodSpec{
 			Containers: []corev1.Container{

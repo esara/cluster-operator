@@ -61,15 +61,16 @@ func (d *Deployment) Deploy() error {
 	return nil
 }
 
-func labelsForStatefulSet(name string) map[string]string {
-	return map[string]string{"app": appName, "nfsserver": name}
+// Due to https://github.com/kubernetes/kubernetes/issues/74916 fixed in
+// 1.15, labels intended for the PVC must be set on the Pod template.
+// In 1.15 and later we can just set the "app" and "nfsserver" labels here.  For
+// now, pass all labels rather than check k8s versions.  The only downside is
+// that the nfs pod gets storageos.com labels that don't do anything directly.
+func labelsForStatefulSet(name string, labels map[string]string) map[string]string {
+	labels["app"] = appName
+	labels["nfsserver"] = name
+	return labels
 }
-
-// func labelsForApp(nfsServer *storageosv1.NFSServer) map[string]string {
-// 	return map[string]string{
-// 		"app": nfsServer.Name,
-// 	}
-// }
 
 func addOwnerRefToObject(obj metav1.Object, ownerRef metav1.OwnerReference) {
 	obj.SetOwnerReferences(append(obj.GetOwnerReferences(), ownerRef))

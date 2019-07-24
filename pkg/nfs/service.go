@@ -28,11 +28,11 @@ func (d *Deployment) createService(nfsPort int, rpcPort int, metricsPort int) er
 		ObjectMeta: metav1.ObjectMeta{
 			Name:            d.nfsServer.Name,
 			Namespace:       d.nfsServer.Namespace,
-			Labels:          labelsForStatefulSet(d.nfsServer.Name),
+			Labels:          labelsForStatefulSet(d.nfsServer.Name, map[string]string{}),
 			OwnerReferences: d.nfsServer.ObjectMeta.OwnerReferences,
 		},
 		Spec: corev1.ServiceSpec{
-			Selector: labelsForStatefulSet(d.nfsServer.Name),
+			Selector: labelsForStatefulSet(d.nfsServer.Name, map[string]string{}),
 			Type:     corev1.ServiceTypeClusterIP,
 			Ports: []corev1.ServicePort{
 				{
