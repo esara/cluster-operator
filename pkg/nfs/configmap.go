@@ -55,6 +55,10 @@ EXPORT {
 func globalConfig() string {
 	// 	Dbus_Name_Prefix = storageos;
 	return `
+NFSv4 {
+	Graceless = true;
+}
+
 NFS_Core_Param {
 	fsid_device = true;
 }`
