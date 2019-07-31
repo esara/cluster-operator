@@ -67,6 +67,10 @@ func (d *Deployment) Deploy() error {
 // now, pass all labels rather than check k8s versions.  The only downside is
 // that the nfs pod gets storageos.com labels that don't do anything directly.
 func labelsForStatefulSet(name string, labels map[string]string) map[string]string {
+	if labels == nil {
+		labels = make(map[string]string)
+	}
+
 	labels["app"] = appName
 	labels["nfsserver"] = name
 
