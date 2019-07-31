@@ -69,6 +69,9 @@ func (d *Deployment) Deploy() error {
 func labelsForStatefulSet(name string, labels map[string]string) map[string]string {
 	labels["app"] = appName
 	labels["nfsserver"] = name
+
+	// TODO: setting fenced should only be done if we _know_ that fencing hasn't been disabled else provisioning will fail
+	labels["storageos.com/fenced"] = "true"
 	return labels
 }
 
